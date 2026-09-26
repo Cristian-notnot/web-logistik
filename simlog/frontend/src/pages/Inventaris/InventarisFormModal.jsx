@@ -1,190 +1,122 @@
-import React, { useEffect, useState } from 'react';
-import { ImagePlus, Loader2 } from 'lucide-react';
-import Modal from '../../components/UI/Modal';
-import Button from '../../components/UI/Button';
+import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 
-const kondisiOptions = ['Baik', 'Rusak', 'Hilang', 'Maintenance'];
-
-export default function InventarisFormModal({ item, kategoriList, ruanganList, onClose, onSaved }) {
-  const isEdit = Boolean(item);
-  const [form, setForm] = useState({
-    nama_barang: item?.nama_barang || '',
-    kategori_id: item?.kategori_id || '',
-    jumlah: item?.jumlah || 1,
-    kondisi: item?.kondisi || 'Baik',
-    ruangan_id: item?.ruangan_id || '',
-    lokasi_detail: item?.lokasi_detail || '',
-    tanggal_pendataan: item?.tanggal_pendataan || new Date().toISOString().slice(0, 10),
-    catatan: item?.catatan || '',
-    foto_url: item?.foto_url || '',
+export default function InventarisFormModal({ item, onClose, onSuccess, kategoriList }) {
+  const [formData, setFormData] = useState({
+    nama_barang: '',
+    kategori_id: '',
+    jumlah: 1,
+    kondisi: 'Baik',
+    lokasi_detail: '',
+    tanggal_pendataan: new Date().toISOString().split('T')[0],
+    catatan: ''
   });
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [fotoFile, setFotoFile] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  function set(field, value) {
-    setForm((f) => ({ ...f, [field]: value }));
-  }
-
-  async function handleFotoChange(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('foto', file);
-      const { data } = await api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      set('foto_url', data.url);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Gagal mengunggah foto.');
-    } finally {
-      setUploading(false);
+  useEffect(() => {
+    if (item) {
+      setFormData({
+        nama_barang: item.nama_barang || '',
+        kategori_id: item.kategori_id || '',
+        jumlah: item.jumlah || 1,
+        kondisi: item.kondisi || 'Baik',
+        lokasi_detail: item.lokasi_detail || '',
+        tanggal_pendataan: item.tanggal_pendataan ? item.tanggal_pendataan.split('T')[0] : new Date().toISOString().split('T')[0],
+        catatan: item.catatan || ''
+      });
     }
-  }
+  }, [item]);
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
+    setLoading(true);
     setError('');
+
+    const data = new FormData();
+    Object.keys(formData).forEach(key => data.append(key, formData[key]));
+    if (fotoFile) data.append('foto', fotoFile);
+
     try {
-      if (isEdit) {
-        await api.put(`/inventaris/${item.id}`, form);
+      if (item) {
+        await api.put(`/inventaris/${item.id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
       } else {
-        await api.post('/inventaris', form);
+        await api.post('/inventaris', data, { headers: { 'Content-Type': 'multipart/form-data' } });
       }
-      onSaved();
+      onSuccess();
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal menyimpan data barang.');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <Modal title={isEdit ? 'Edit Barang' : 'Tambah Barang Inventaris'} onClose={onClose} width="max-w-xl">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <div className="px-3.5 py-2.5 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Nama Barang</label>
-          <input
-            required
-            value={form.nama_barang}
-            onChange={(e) => set('nama_barang', e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus-ring text-sm"
-            placeholder="mis. Tenda Dome Kapasitas 4"
-          />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 className="text-lg font-bold text-slate-800">{item ? 'Edit Barang Inventaris' : 'Tambah Barang Inventaris'}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">×</button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {error && <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-700">Nama Barang</label>
+            <input type="text" value={formData.nama_barang} onChange={e => setFormData({ ...formData, nama_barang: e.target.value })} className="w-full rounded-xl border border-slate-300 py-2 px-3 text-sm text-slate-800 focus:border-brand focus:outline-none" required />
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Kategori</label>
-            <select
-              value={form.kategori_id}
-              onChange={(e) => set('kategori_id', e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus-ring text-sm bg-white"
-            >
-              <option value="">— Pilih kategori —</option>
-              {kategoriList.map((k) => (
-                <option key={k.id} value={k.id}>{k.nama_kategori}</option>
-              ))}
+            <label className="mb-1 block text-sm font-medium text-slate-700">Kategori</label>
+            <select value={formData.kategori_id} onChange={e => setFormData({ ...formData, kategori_id: e.target.value })} className="w-full rounded-xl border border-slate-300 py-2 px-3 text-sm text-slate-700 focus:border-brand focus:outline-none" required>
+              <option value="">-- Pilih kategori --</option>
+              {kategoriList.map(k => <option key={k.id} value={k.id}>{k.nama_kategori}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Jumlah</label>
-            <input
-              type="number"
-              min={1}
-              required
-              value={form.jumlah}
-              onChange={(e) => set('jumlah', e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus-ring text-sm"
-            />
-          </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Kondisi</label>
-            <select
-              value={form.kondisi}
-              onChange={(e) => set('kondisi', e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus-ring text-sm bg-white"
-            >
-              {kondisiOptions.map((k) => <option key={k} value={k}>{k}</option>)}
+            <label className="mb-1 block text-sm font-medium text-slate-700">Jumlah</label>
+            <input type="number" min="1" value={formData.jumlah} onChange={e => setFormData({ ...formData, jumlah: parseInt(e.target.value) || 1 })} className="w-full rounded-xl border border-slate-300 py-2 px-3 text-sm text-slate-800 focus:border-brand focus:outline-none" required />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Kondisi</label>
+            <select value={formData.kondisi} onChange={e => setFormData({ ...formData, kondisi: e.target.value })} className="w-full rounded-xl border border-slate-300 py-2 px-3 text-sm text-slate-700 focus:border-brand focus:outline-none">
+              <option value="Baik">Baik</option>
+              <option value="Rusak">Rusak</option>
+              <option value="Hilang">Hilang</option>
+              <option value="Perbaikan">Perbaikan</option>
             </select>
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Ruangan</label>
-            <select
-              value={form.ruangan_id}
-              onChange={(e) => set('ruangan_id', e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus-ring text-sm bg-white"
-            >
-              <option value="">— Pilih ruangan —</option>
-              {ruanganList.map((r) => (
-                <option key={r.id} value={r.id}>{r.nama_ruangan}</option>
-              ))}
-            </select>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Lokasi Detail</label>
+            <input type="text" value={formData.lokasi_detail} onChange={e => setFormData({ ...formData, lokasi_detail: e.target.value })} className="w-full rounded-xl border border-slate-300 py-2 px-3 text-sm text-slate-800 focus:border-brand focus:outline-none" placeholder="mis. Rak 2, sisi kiri" />
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Lokasi Detail</label>
-            <input
-              value={form.lokasi_detail}
-              onChange={(e) => set('lokasi_detail', e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus-ring text-sm"
-              placeholder="mis. Rak 2, sisi kiri"
-            />
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-700">Tanggal Pendataan</label>
+            <input type="date" value={formData.tanggal_pendataan} onChange={e => setFormData({ ...formData, tanggal_pendataan: e.target.value })} className="w-full rounded-xl border border-slate-300 py-2 px-3 text-sm text-slate-800 focus:border-brand focus:outline-none" required />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Tanggal Pendataan</label>
-            <input
-              type="date"
-              required
-              value={form.tanggal_pendataan}
-              onChange={(e) => set('tanggal_pendataan', e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus-ring text-sm"
-            />
+
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-700">Foto Barang</label>
+            <input type="file" accept="image/*" onChange={e => setFotoFile(e.target.files[0])} className="w-full text-sm text-slate-600" />
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Foto Barang</label>
-          <div className="flex items-center gap-3">
-            {form.foto_url && (
-              <img src={form.foto_url} alt="Pratinjau" className="h-14 w-14 rounded-lg object-cover border border-slate-200" />
-            )}
-            <label className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm text-slate-500 cursor-pointer hover:bg-slate-50">
-              {uploading ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />}
-              {uploading ? 'Mengunggah…' : 'Unggah foto'}
-              <input type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
-            </label>
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-700">Catatan</label>
+            <textarea value={formData.catatan} onChange={e => setFormData({ ...formData, catatan: e.target.value })} rows="3" className="w-full rounded-xl border border-slate-300 py-2 px-3 text-sm text-slate-800 focus:border-brand focus:outline-none"></textarea>
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Catatan</label>
-          <textarea
-            rows={2}
-            value={form.catatan}
-            onChange={(e) => set('catatan', e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus-ring text-sm resize-none"
-            placeholder="Catatan tambahan (opsional)"
-          />
-        </div>
-
-        <div className="flex justify-end gap-3 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>Batal</Button>
-          <Button type="submit" disabled={saving || uploading}>
-            {saving && <Loader2 size={16} className="animate-spin" />}
-            {isEdit ? 'Simpan Perubahan' : 'Tambah Barang'}
-          </Button>
-        </div>
-      </form>
-    </Modal>
+          <div className="sm:col-span-2 flex justify-end gap-2 border-t border-slate-100 pt-3">
+            <button type="button" onClick={onClose} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
+            <button type="submit" disabled={loading} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:bg-slate-300">{loading ? 'Menyimpan...' : 'Simpan'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

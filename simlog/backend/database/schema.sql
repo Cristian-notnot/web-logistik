@@ -1,35 +1,18 @@
--- =====================================================================
--- SIM LOGISTIK HW UNIMUS
--- Skema database relasional untuk Sistem Informasi Manajemen Logistik
--- Mako & Bidang Logistik HW UNIMUS
--- =====================================================================
--- Cara pakai (Laragon / MySQL):
---   1. Buka HeidiSQL / phpMyAdmin bawaan Laragon, atau via terminal:
---      mysql -u root -p < schema.sql
---   2. Lanjutkan dengan seed.sql untuk data awal (role, bidang, kategori)
--- =====================================================================
-
 CREATE DATABASE IF NOT EXISTS simlog_hw_unimus
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 USE simlog_hw_unimus;
 
--- ---------------------------------------------------------------------
--- 1. MASTER DATA: BIDANG (8 bidang untuk rotasi piket)
--- ---------------------------------------------------------------------
 CREATE TABLE bidang (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   nama_bidang   VARCHAR(100) NOT NULL,
   deskripsi     VARCHAR(255) NULL,
-  urutan_rotasi INT NOT NULL DEFAULT 0,   -- urutan giliran piket
+  urutan_rotasi INT NOT NULL DEFAULT 0,   
   aktif         TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------------------
--- 2. USERS & ROLE
--- ---------------------------------------------------------------------
 CREATE TABLE users (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   nama          VARCHAR(100) NOT NULL,
@@ -47,9 +30,6 @@ CREATE TABLE users (
   CONSTRAINT fk_users_bidang FOREIGN KEY (bidang_id) REFERENCES bidang(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------------------
--- 3. MASTER DATA: RUANGAN MAKO & KATEGORI BARANG
--- ---------------------------------------------------------------------
 CREATE TABLE ruangan (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   nama_ruangan VARCHAR(100) NOT NULL,
@@ -65,9 +45,6 @@ CREATE TABLE kategori_barang (
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------------------
--- 4. INVENTARIS (inti sistem) + RIWAYAT/AUDIT TRAIL
--- ---------------------------------------------------------------------
 CREATE TABLE inventaris (
   id                INT AUTO_INCREMENT PRIMARY KEY,
   nama_barang       VARCHAR(150) NOT NULL,
@@ -75,16 +52,16 @@ CREATE TABLE inventaris (
   jumlah            INT NOT NULL DEFAULT 1,
   kondisi           ENUM('Baik','Rusak','Hilang','Maintenance') NOT NULL DEFAULT 'Baik',
   ruangan_id        INT NULL,
-  lokasi_detail     VARCHAR(150) NULL,   -- misal: "Rak 2, sisi kiri"
+  lokasi_detail     VARCHAR(150) NULL,   
   foto_url          VARCHAR(255) NULL,
   catatan           TEXT NULL,
   tanggal_pendataan DATE NOT NULL,
   sumber            ENUM('Pendataan Awal','Pengadaan','Manual') NOT NULL DEFAULT 'Manual',
-  is_disewakan      TINYINT(1) NOT NULL DEFAULT 0, -- true jika barang ini juga terdaftar di modul sewa
+  is_disewakan      TINYINT(1) NOT NULL DEFAULT 0, 
   created_by        INT NULL,
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  deleted_at        DATETIME NULL, -- soft delete supaya riwayat tetap utuh
+  deleted_at        DATETIME NULL, 
   CONSTRAINT fk_inv_kategori FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL,
   CONSTRAINT fk_inv_ruangan FOREIGN KEY (ruangan_id) REFERENCES ruangan(id) ON DELETE SET NULL,
   CONSTRAINT fk_inv_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
@@ -92,7 +69,6 @@ CREATE TABLE inventaris (
   INDEX idx_inv_nama (nama_barang)
 ) ENGINE=InnoDB;
 
--- Audit trail: SETIAP perubahan pada inventaris tercatat di sini
 CREATE TABLE inventaris_riwayat (
   id             INT AUTO_INCREMENT PRIMARY KEY,
   inventaris_id  INT NOT NULL,
@@ -110,9 +86,6 @@ CREATE TABLE inventaris_riwayat (
   INDEX idx_riwayat_inventaris (inventaris_id)
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------------------
--- 5. UNBOXING & PENDATAAN MAKO
--- ---------------------------------------------------------------------
 CREATE TABLE unboxing_pendataan (
   id             INT AUTO_INCREMENT PRIMARY KEY,
   ruangan_id     INT NULL,
@@ -124,23 +97,19 @@ CREATE TABLE unboxing_pendataan (
   dilakukan_oleh INT NULL,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_unboxing_ruangan FOREIGN KEY (ruangan_id) REFERENCES ruangan(id) ON DELETE CASCADE,
-  CONSTRAINT fk_unboxing_inventaris FOREIGN KEY (inventaris_id) REFERENCES inventaris(id) ON DELETE SET NULL,
+  CONSTRAINT fk_unboxing_inventaris KEY (inventaris_id) REFERENCES inventaris(id) ON DELETE SET NULL,
   CONSTRAINT fk_unboxing_user FOREIGN KEY (dilakukan_oleh) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- Checklist kebersihan/kondisi per sesi pendataan
 CREATE TABLE unboxing_checklist_item (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   unboxing_id   INT NOT NULL,
-  item          VARCHAR(150) NOT NULL,   -- misal: "Lantai bersih", "Instalasi listrik aman"
+  item          VARCHAR(150) NOT NULL,   
   status        ENUM('Baik','Kurang','Buruk') NOT NULL DEFAULT 'Baik',
   catatan       VARCHAR(255) NULL,
   CONSTRAINT fk_checklist_unboxing FOREIGN KEY (unboxing_id) REFERENCES unboxing_pendataan(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Setiap sesi unboxing bisa langsung menghasilkan banyak baris inventaris awal
--- (relasi murni melalui inventaris.sumber = 'Pendataan Awal' + tanggal_pendataan yang sama;
---  tabel penghubung eksplisit di bawah agar tetap terlacak sesi mana yang menginput barang apa)
 CREATE TABLE unboxing_inventaris (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   unboxing_id   INT NOT NULL,
@@ -149,17 +118,15 @@ CREATE TABLE unboxing_inventaris (
   CONSTRAINT fk_ui_inventaris FOREIGN KEY (inventaris_id) REFERENCES inventaris(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------------------
--- 6. PIKET MAKO (input via Google Form -> Sheets -> backend sync)
--- ---------------------------------------------------------------------
 CREATE TABLE piket_jadwal (
   id             INT AUTO_INCREMENT PRIMARY KEY,
   bidang_id      INT NOT NULL,
+  piket_hari_ke  INT NOT NULL DEFAULT 1,
   minggu_mulai   DATE NOT NULL,
   minggu_selesai DATE NOT NULL,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_jadwal_bidang FOREIGN KEY (bidang_id) REFERENCES bidang(id) ON DELETE CASCADE,
-  UNIQUE KEY uq_minggu (minggu_mulai, bidang_id)
+  UNIQUE KEY uq_minggu_hari (minggu_mulai, bidang_id, piket_hari_ke)
 ) ENGINE=InnoDB;
 
 CREATE TABLE piket_pelaksanaan (
@@ -167,21 +134,20 @@ CREATE TABLE piket_pelaksanaan (
   jadwal_id              INT NOT NULL,
   tanggal                DATE NOT NULL,
   status                 ENUM('Belum','Selesai','Tidak Terlaksana') NOT NULL DEFAULT 'Belum',
-  nama_pengisi           VARCHAR(100) NULL,   -- dari Google Form
+  nama_pengisi           VARCHAR(100) NOT NULL,   
+  bidang_id              INT NOT NULL,
   catatan                TEXT NULL,
-  foto_url               VARCHAR(255) NULL,
-  sumber_input           ENUM('Google Form','Manual') NOT NULL DEFAULT 'Google Form',
-  google_form_response_id VARCHAR(150) NULL UNIQUE, -- cegah duplikasi saat sinkron
+  foto_url               VARCHAR(255) NOT NULL,
+  sumber_input           ENUM('Google Form','Manual') NOT NULL DEFAULT 'Manual',
+  google_form_response_id VARCHAR(150) NULL UNIQUE,
   created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_pelaksanaan_jadwal FOREIGN KEY (jadwal_id) REFERENCES piket_jadwal(id) ON DELETE CASCADE
+  CONSTRAINT fk_pelaksanaan_jadwal FOREIGN KEY (jadwal_id) REFERENCES piket_jadwal(id) ON DELETE CASCADE,
+  CONSTRAINT fk_pelaksanaan_bidang FOREIGN KEY (bidang_id) REFERENCES bidang(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------------------
--- 7. RUANG/BARANG SEWA & PEMINJAMAN
--- ---------------------------------------------------------------------
 CREATE TABLE barang_sewa (
   id               INT AUTO_INCREMENT PRIMARY KEY,
-  inventaris_id    INT NULL,   -- opsional: terhubung ke inventaris induk
+  inventaris_id    INT NULL,   
   nama_barang      VARCHAR(150) NOT NULL,
   kategori_id      INT NULL,
   jumlah_total     INT NOT NULL DEFAULT 0,
@@ -204,59 +170,22 @@ CREATE TABLE peminjaman (
   tanggal_kembali_rencana DATE NOT NULL,
   tanggal_kembali_aktual  DATE NULL,
   status                 ENUM('Berjalan','Selesai','Terlambat') NOT NULL DEFAULT 'Berjalan',
+  surat_peminjaman_url   VARCHAR(255) NULL,
+  ktm_url                VARCHAR(255) NULL,
   catatan                TEXT NULL,
+  sumber_input           ENUM('Google Form','Manual') NOT NULL DEFAULT 'Manual',
+  google_form_response_id VARCHAR(150) NULL UNIQUE,
   dicatat_oleh           INT NULL,
   created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_pinjam_barang FOREIGN KEY (barang_sewa_id) REFERENCES barang_sewa(id) ON DELETE CASCADE,
   CONSTRAINT fk_pinjam_user FOREIGN KEY (dicatat_oleh) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- ---------------------------------------------------------------------
--- 8. PENGADAAN & REVITALISASI
--- ---------------------------------------------------------------------
 CREATE TABLE pengadaan (
   id            INT AUTO_INCREMENT PRIMARY KEY,
-  nama_barang   VARCHAR(150) NOT NULL,
+  nama_pengadaan VARCHAR(150) NOT NULL,
   jumlah        INT NOT NULL DEFAULT 1,
-  tanggal       DATE NOT NULL,
-  harga         DECIMAL(12,2) NULL,
-  sumber_dana   VARCHAR(150) NULL,
-  kondisi       ENUM('Baik','Rusak','Maintenance') NOT NULL DEFAULT 'Baik',
-  lokasi_id     INT NULL,
-  catatan       TEXT NULL,
-  inventaris_id INT NULL,  -- terhubung otomatis setelah masuk ke inventaris
-  dicatat_oleh  INT NULL,
-  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_pengadaan_lokasi FOREIGN KEY (lokasi_id) REFERENCES ruangan(id) ON DELETE SET NULL,
-  CONSTRAINT fk_pengadaan_inventaris FOREIGN KEY (inventaris_id) REFERENCES inventaris(id) ON DELETE SET NULL,
-  CONSTRAINT fk_pengadaan_user FOREIGN KEY (dicatat_oleh) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-CREATE TABLE kerusakan_laporan (
-  id             INT AUTO_INCREMENT PRIMARY KEY,
-  inventaris_id  INT NULL,
-  dilaporkan_oleh INT NULL,
-  tanggal_lapor  DATE NOT NULL,
-  deskripsi      TEXT NOT NULL,
-  foto_url       VARCHAR(255) NULL,
-  status         ENUM('Baru','Diproses','Selesai') NOT NULL DEFAULT 'Baru',
-  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_kerusakan_inventaris FOREIGN KEY (inventaris_id) REFERENCES inventaris(id) ON DELETE SET NULL,
-  CONSTRAINT fk_kerusakan_user FOREIGN KEY (dilaporkan_oleh) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-CREATE TABLE revitalisasi (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
-  inventaris_id    INT NOT NULL,
-  kerusakan_id     INT NULL,
-  tanggal_perbaikan DATE NOT NULL,
-  tindakan         VARCHAR(255) NOT NULL,
-  biaya            DECIMAL(12,2) NULL,
-  status           ENUM('Diajukan','Proses','Selesai','Dibatalkan') NOT NULL DEFAULT 'Diajukan',
-  catatan          TEXT NULL,
-  dicatat_oleh     INT NULL,
-  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_revitalisasi_inventaris FOREIGN KEY (inventaris_id) REFERENCES inventaris(id) ON DELETE CASCADE,
-  CONSTRAINT fk_revitalisasi_kerusakan FOREIGN KEY (kerusakan_id) REFERENCES kerusakan_laporan(id) ON DELETE SET NULL,
-  CONSTRAINT fk_revitalisasi_user FOREIGN KEY (dicatat_oleh) REFERENCES users(id) ON DELETE SET NULL
+  anggaran      DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  status        ENUM('Diajukan','Disetujui','Ditolak','Selesai') NOT NULL DEFAULT 'Diajukan',
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;

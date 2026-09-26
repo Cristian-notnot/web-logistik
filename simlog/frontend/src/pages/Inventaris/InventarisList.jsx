@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Plus, Search, Pencil, Trash2, Eye, Package } from 'lucide-react';
+import { exportToExcel } from '../../utils/exportToExcel';
+import { Plus, Search, Pencil, Trash2, Eye, Package, FileSpreadsheet } from 'lucide-react';
 import DashboardLayout from '../../components/Layout/DashboardLayout';
 import Button from '../../components/UI/Button';
 import KondisiBadge from '../../components/UI/KondisiBadge';
@@ -51,7 +52,7 @@ export default function InventarisList() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => loadData(1), 300); // debounce search
+    const t = setTimeout(() => loadData(1), 300);
     return () => clearTimeout(t);
   }, [loadData]);
 
@@ -64,6 +65,19 @@ export default function InventarisList() {
       setError(err.response?.data?.message || 'Gagal menghapus barang.');
     }
   }
+
+  const handleExport = () => {
+    const formattedData = data.map((item) => ({
+      'Nama Barang': item.nama_barang,
+      'Kategori': item.nama_kategori || '—',
+      'Jumlah': item.jumlah,
+      'Kondisi': item.kondisi,
+      'Ruangan': item.nama_ruangan || '—',
+      'Catatan': item.catatan || '—',
+      'Tanggal Pendataan': item.tanggal_pendataan
+    }));
+    exportToExcel(formattedData, 'Laporan_Inventaris_HW_UNIMUS');
+  };
 
   return (
     <DashboardLayout title="Inventaris" subtitle="Kelola seluruh barang logistik Mako beserta riwayat perubahannya">
@@ -96,6 +110,13 @@ export default function InventarisList() {
           <option value="">Semua Kategori</option>
           {kategoriList.map((k) => <option key={k.id} value={k.id}>{k.nama_kategori}</option>)}
         </select>
+
+        <button
+          onClick={handleExport}
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none"
+        >
+          <FileSpreadsheet size={16} /> Ekspor Excel
+        </button>
 
         {isAdmin && (
           <Button onClick={() => { setEditingItem(null); setFormOpen(true); }}>
@@ -169,30 +190,23 @@ export default function InventarisList() {
             ))}
           </tbody>
         </table>
-
-        {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-sm text-slate-500">
-            <span>Halaman {pagination.page} dari {pagination.totalPages}</span>
-            <div className="flex gap-2">
-              <button disabled={pagination.page <= 1} onClick={() => loadData(pagination.page - 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40">Sebelumnya</button>
-              <button disabled={pagination.page >= pagination.totalPages} onClick={() => loadData(pagination.page + 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40">Berikutnya</button>
-            </div>
-          </div>
-        )}
       </div>
 
       {formOpen && (
         <InventarisFormModal
           item={editingItem}
+          onClose={() => setFormOpen(false)}
+          onSuccess={() => { setFormOpen(false); loadData(pagination.page); }}
           kategoriList={kategoriList}
           ruanganList={ruanganList}
-          onClose={() => setFormOpen(false)}
-          onSaved={() => { setFormOpen(false); loadData(pagination.page); }}
         />
       )}
 
       {detailItem && (
-        <InventarisDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
+        <InventarisDetailModal
+          item={detailItem}
+          onClose={() => setDetailItem(null)}
+        />
       )}
     </DashboardLayout>
   );

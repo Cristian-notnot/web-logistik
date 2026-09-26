@@ -1,6 +1,5 @@
 USE simlog_hw_unimus;
 
--- 8 Bidang untuk rotasi piket (sesuaikan nama sesuai struktur HW UNIMUS kalian)
 INSERT INTO bidang (nama_bidang, urutan_rotasi) VALUES
   ('Bidang Organisasi', 1),
   ('Bidang Kepanduan', 2),
@@ -11,7 +10,6 @@ INSERT INTO bidang (nama_bidang, urutan_rotasi) VALUES
   ('BKM Kesenian', 7),
   ('BKM Kewirausahaan', 8);
 
--- Ruangan Mako
 INSERT INTO ruangan (nama_ruangan, lokasi) VALUES
   ('Ruang Sekretariat', 'Mako Lantai 1'),
   ('Gudang Logistik', 'Mako Lantai 1'),
