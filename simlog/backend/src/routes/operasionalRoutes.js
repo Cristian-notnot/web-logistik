@@ -1,0 +1,14 @@
+const express = require('express');
+const c = require('../controllers/operasionalController');
+const { requireAuth } = require('../middleware/auth');
+const { requireRole } = require('../middleware/role');
+const router = express.Router();
+router.use(requireAuth);
+const admin = requireRole('admin_logistik');
+router.get('/unboxing', c.listUnboxing); router.post('/unboxing', admin, c.createUnboxing);
+router.get('/piket', c.listPiket); router.post('/piket/jadwal', admin, c.createJadwalPiket); router.post('/piket/pelaksanaan', admin, c.createPelaksanaanPiket);
+router.get('/sewa', c.listSewa); router.post('/sewa/barang', admin, c.createBarangSewa); router.post('/sewa/peminjaman', admin, c.createPeminjaman);
+router.get('/pengadaan', c.listPengadaan); router.post('/pengadaan', admin, c.createPengadaan);
+router.get('/revitalisasi', c.listRevitalisasi); router.post('/revitalisasi/laporan', admin, c.createLaporanKerusakan); router.post('/revitalisasi', admin, c.createRevitalisasi);
+router.get('/laporan', c.report);
+module.exports = router;

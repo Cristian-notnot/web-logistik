@@ -1,0 +1,37 @@
+<svg width="520" height="520" viewBox="0 0 520 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M260 18L438 106V344L260 500L82 344V106L260 18Z" fill="#F7D71A" stroke="#111827" stroke-width="6"/>
+  <path d="M260 18L438 106V344L260 500V18Z" fill="#D82A2A" stroke="#111827" stroke-width="6"/>
+  <path d="M260 18L82 106V344L260 500V18Z" fill="#F7D71A" stroke="#111827" stroke-width="6"/>
+
+  <path d="M260 52L392 128V322L260 448L128 322V128L260 52Z" fill="#1E9A5A" stroke="#111827" stroke-width="6"/>
+  <circle cx="260" cy="255" r="118" fill="#1A8C52" stroke="#F5F5F2" stroke-width="7"/>
+
+  <path d="M155 255C182 220 206 203 232 191C225 175 208 163 196 148C184 161 173 176 159 190C145 204 132 219 122 235C133 240 145 246 155 255Z" fill="#F5F5F2"/>
+  <path d="M365 255C338 220 314 203 288 191C295 175 312 163 324 148C336 161 347 176 361 190C375 204 388 219 398 235C387 240 375 246 365 255Z" fill="#F5F5F2"/>
+  <path d="M238 168L260 211L282 168L296 209L340 214L302 243L314 285L260 260L206 285L218 243L180 214L224 209L238 168Z" fill="#F5F5F2"/>
+  <path d="M227 315C239 298 249 289 260 286C271 289 281 298 293 315C285 335 272 347 260 353C248 347 235 335 227 315Z" fill="#F5F5F2"/>
+  <circle cx="260" cy="255" r="18" fill="#F5F5F2"/>
+  <circle cx="260" cy="255" r="7" fill="#1A8C52"/>
+
+  <g opacity="0.9">
+    <path d="M118 170C144 152 160 140 176 120C185 143 179 160 167 177C154 194 136 203 118 210L118 170Z" fill="#F5F5F2"/>
+    <path d="M402 170C376 152 360 140 344 120C335 143 341 160 353 177C366 194 384 203 402 210V170Z" fill="#F5F5F2"/>
+    <path d="M118 340C144 358 160 370 176 390C185 367 179 350 167 333C154 316 136 307 118 300L118 340Z" fill="#F5F5F2"/>
+    <path d="M402 340C376 358 360 370 344 390C335 367 341 350 353 333C366 316 384 307 402 300V340Z" fill="#F5F5F2"/>
+  </g>
+
+  <g fill="#F5F5F2" font-family="Arial, Helvetica, sans-serif" font-weight="700" letter-spacing="3">
+    <text x="260" y="109" text-anchor="middle" font-size="38">KAFILAH</text>
+    <text x="260" y="148" text-anchor="middle" font-size="30">DJENDRAL</text>
+    <text x="260" y="186" text-anchor="middle" font-size="28">SOEDIRMAN</text>
+    <text x="260" y="425" text-anchor="middle" font-size="22">UNIVERSITAS</text>
+    <text x="260" y="455" text-anchor="middle" font-size="18">MUHAMMADIYAH SEMARANG</text>
+  </g>
+
+  <g opacity="0.85" stroke="#111827" stroke-width="4" stroke-linecap="round">
+    <path d="M115 104C140 114 155 124 170 142"/>
+    <path d="M405 104C380 114 365 124 350 142"/>
+    <path d="M115 406C140 396 155 386 170 368"/>
+    <path d="M405 406C380 396 365 386 350 368"/>
+  </g>
+</svg>
