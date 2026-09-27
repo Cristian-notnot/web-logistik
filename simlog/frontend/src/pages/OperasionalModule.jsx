@@ -70,7 +70,7 @@ const configs = {
     ],
   },
   sewa: {
-    title: 'Ruang / Barang Sewa',
+    title: 'Barang Sewa',
     subtitle: 'Pantau ketersediaan dan peminjaman.',
     sections: [
       {
@@ -217,7 +217,6 @@ export default function OperasionalModule({ type }) {
         setData(moduleRes.data);
       }
 
-      // Ambil master data secara terpisah (supaya tidak bikin halaman gagal total)
       try {
         const [kategori, ruangan, bidang, inventaris] = await Promise.all([
           api.get('/master/kategori'),

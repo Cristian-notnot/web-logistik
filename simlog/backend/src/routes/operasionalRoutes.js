@@ -23,11 +23,6 @@ router.use(requireAuth);
 const admin = requireRole(
   'admin_logistik'
 );
-
-// =====================================================
-// UPLOAD
-// =====================================================
-
 const uploadDir =
   path.resolve(
     __dirname,
@@ -127,10 +122,6 @@ const upload = multer({
   },
 });
 
-// =====================================================
-// UNBOXING
-// =====================================================
-
 router.get(
   '/unboxing',
   c.listUnboxing
@@ -143,9 +134,6 @@ router.post(
   c.createUnboxing
 );
 
-// =====================================================
-// PIKET
-// =====================================================
 
 router.get(
   '/piket',
@@ -164,10 +152,6 @@ router.post(
   c.createPelaksanaanPiket
 );
 
-// =====================================================
-// SEWA
-// =====================================================
-
 router.get(
   '/sewa',
   c.listSewa
@@ -185,10 +169,6 @@ router.post(
   c.createPeminjaman
 );
 
-// =====================================================
-// PENGADAAN
-// =====================================================
-
 router.get(
   '/pengadaan',
   c.listPengadaan
@@ -199,10 +179,6 @@ router.post(
   admin,
   c.createPengadaan
 );
-
-// =====================================================
-// REVITALISASI
-// =====================================================
 
 router.get(
   '/revitalisasi',
@@ -221,10 +197,6 @@ router.post(
   admin,
   c.createRevitalisasi
 );
-
-// =====================================================
-// LAPORAN
-// =====================================================
 
 router.get(
   '/laporan',
