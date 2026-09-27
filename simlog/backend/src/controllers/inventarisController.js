@@ -7,7 +7,6 @@ function angkaPositif(value, fallback, max = 100) {
   return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
 }
 
-// Helper: catat satu baris riwayat/audit trail untuk sebuah barang
 async function catatRiwayat(conn, { inventaris_id, tipe_perubahan, keterangan, data_sebelum, data_sesudah, changed_by }) {
   await conn.query(
     `INSERT INTO inventaris_riwayat
@@ -24,7 +23,6 @@ async function catatRiwayat(conn, { inventaris_id, tipe_perubahan, keterangan, d
   );
 }
 
-// GET /api/inventaris?kondisi=&kategori_id=&ruangan_id=&search=&page=&limit=
 async function list(req, res) {
   try {
     const { kondisi, kategori_id, ruangan_id, search } = req.query;
@@ -75,7 +73,6 @@ async function list(req, res) {
   }
 }
 
-// GET /api/inventaris/:id
 async function detail(req, res) {
   try {
     const [rows] = await pool.query(
@@ -94,7 +91,6 @@ async function detail(req, res) {
   }
 }
 
-// GET /api/inventaris/:id/riwayat
 async function riwayat(req, res) {
   try {
     const [rows] = await pool.query(
@@ -112,7 +108,6 @@ async function riwayat(req, res) {
   }
 }
 
-// POST /api/inventaris
 async function create(req, res) {
   const conn = await pool.getConnection();
   try {
@@ -165,7 +160,6 @@ async function create(req, res) {
   }
 }
 
-// PUT /api/inventaris/:id
 async function update(req, res) {
   const conn = await pool.getConnection();
   try {
@@ -212,7 +206,6 @@ async function update(req, res) {
       ]
     );
 
-    // Kalau kondisi berubah, catat sebagai tipe khusus supaya gampang difilter di laporan
     const tipePerubahan = (kondisi && kondisi !== before.kondisi) ? 'Kondisi Berubah' : 'Diperbarui';
 
     await catatRiwayat(conn, {
@@ -237,7 +230,6 @@ async function update(req, res) {
   }
 }
 
-// DELETE /api/inventaris/:id  (soft delete, riwayat tetap tersimpan)
 async function remove(req, res) {
   const conn = await pool.getConnection();
   try {
@@ -268,7 +260,6 @@ async function remove(req, res) {
   }
 }
 
-// GET /api/inventaris/ringkasan  (untuk kartu statistik dashboard)
 async function ringkasan(req, res) {
   try {
     const [[total]] = await pool.query('SELECT COUNT(*) AS jumlah FROM inventaris WHERE deleted_at IS NULL');
@@ -292,7 +283,6 @@ async function ringkasan(req, res) {
   }
 }
 
-// GET /api/inventaris/aktivitas-terbaru?limit=8  (untuk kartu "Aktivitas Logistik Terbaru" di dashboard)
 async function aktivitasTerbaru(req, res) {
   try {
     const limit = angkaPositif(req.query.limit, 8, 100);
@@ -312,5 +302,4 @@ async function aktivitasTerbaru(req, res) {
     return res.status(500).json({ message: 'Gagal mengambil aktivitas terbaru.' });
   }
 }
-
-module.exports = { list, detail, riwayat, create, update, remove, ringkasan, aktivitasTerbaru };
+    module.exports = { list, detail, riwayat, create, update, remove, ringkasan, aktivitasTerbaru };

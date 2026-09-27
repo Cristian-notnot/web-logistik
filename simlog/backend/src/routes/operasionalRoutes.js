@@ -1,43 +1,234 @@
 const express = require('express');
+const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
-const c = require('../controllers/operasionalController');
-const { requireAuth } = require('../middleware/auth');
-const { requireRole } = require('../middleware/role');
 
-const router = express.Router();
+const c = require(
+  '../controllers/operasionalController'
+);
+
+const {
+  requireAuth,
+} = require('../middleware/auth');
+
+const {
+  requireRole,
+} = require('../middleware/role');
+
+const router =
+  express.Router();
+
 router.use(requireAuth);
 
-const admin = requireRole('admin_logistik');
+const admin = requireRole(
+  'admin_logistik'
+);
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, process.env.UPLOAD_DIR || 'uploads');
+// =====================================================
+// UPLOAD
+// =====================================================
+
+const uploadDir =
+  path.resolve(
+    __dirname,
+    '..',
+    '..',
+    process.env.UPLOAD_DIR ||
+      'uploads'
+  );
+
+if (
+  !fs.existsSync(uploadDir)
+) {
+  fs.mkdirSync(
+    uploadDir,
+    {
+      recursive: true,
+    }
+  );
+}
+
+const storage =
+  multer.diskStorage({
+    destination: (
+      req,
+      file,
+      cb
+    ) => {
+      cb(
+        null,
+        uploadDir
+      );
+    },
+
+    filename: (
+      req,
+      file,
+      cb
+    ) => {
+      const name =
+        `${Date.now()}-${Math.round(
+          Math.random() *
+            1e9
+        )}`;
+
+      const ext =
+        path
+          .extname(
+            file.originalname
+          )
+          .toLowerCase();
+
+      cb(
+        null,
+        `${name}${ext}`
+      );
+    },
+  });
+
+const upload = multer({
+  storage,
+
+  limits: {
+    fileSize:
+      5 * 1024 * 1024,
   },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
+
+  fileFilter: (
+    req,
+    file,
+    cb
+  ) => {
+    const allowed = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.webp',
+    ];
+
+    const ext =
+      path
+        .extname(
+          file.originalname
+        )
+        .toLowerCase();
+
+    if (
+      !allowed.includes(ext)
+    ) {
+      return cb(
+        new Error(
+          'Format file harus JPG, JPEG, PNG, atau WEBP.'
+        )
+      );
+    }
+
+    cb(null, true);
+  },
 });
-const upload = multer({ storage: storage });
 
-router.get('/unboxing', c.listUnboxing);
-router.post('/unboxing', admin, upload.single('foto'), c.createUnboxing);
+// =====================================================
+// UNBOXING
+// =====================================================
 
-router.get('/piket', c.listPiket); 
-router.post('/piket/jadwal', admin, c.createJadwalPiket); 
-router.post('/piket/pelaksanaan', admin, c.createPelaksanaanPiket);
+router.get(
+  '/unboxing',
+  c.listUnboxing
+);
 
-router.get('/sewa', c.listSewa); 
-router.post('/sewa/barang', admin, c.createBarangSewa); 
-router.post('/sewa/peminjaman', admin, c.createPeminjaman);
+router.post(
+  '/unboxing',
+  admin,
+  upload.single('foto'),
+  c.createUnboxing
+);
 
-router.get('/pengadaan', c.listPengadaan); 
-router.post('/pengadaan', admin, c.createPengadaan);
+// =====================================================
+// PIKET
+// =====================================================
 
-router.get('/revitalisasi', c.listRevitalisasi); 
-router.post('/revitalisasi/laporan', admin, c.createLaporanKerusakan); 
-router.post('/revitalisasi', admin, c.createRevitalisasi);
+router.get(
+  '/piket',
+  c.listPiket
+);
 
-router.get('/laporan', c.report);
+router.post(
+  '/piket/jadwal',
+  admin,
+  c.createJadwalPiket
+);
+
+router.post(
+  '/piket/pelaksanaan',
+  upload.single('foto'),
+  c.createPelaksanaanPiket
+);
+
+// =====================================================
+// SEWA
+// =====================================================
+
+router.get(
+  '/sewa',
+  c.listSewa
+);
+
+router.post(
+  '/sewa/barang',
+  admin,
+  c.createBarangSewa
+);
+
+router.post(
+  '/sewa/peminjaman',
+  admin,
+  c.createPeminjaman
+);
+
+// =====================================================
+// PENGADAAN
+// =====================================================
+
+router.get(
+  '/pengadaan',
+  c.listPengadaan
+);
+
+router.post(
+  '/pengadaan',
+  admin,
+  c.createPengadaan
+);
+
+// =====================================================
+// REVITALISASI
+// =====================================================
+
+router.get(
+  '/revitalisasi',
+  c.listRevitalisasi
+);
+
+router.post(
+  '/revitalisasi/laporan',
+  admin,
+  upload.single('foto'),
+  c.createLaporanKerusakan
+);
+
+router.post(
+  '/revitalisasi',
+  admin,
+  c.createRevitalisasi
+);
+
+// =====================================================
+// LAPORAN
+// =====================================================
+
+router.get(
+  '/laporan',
+  c.getLaporan
+);
 
 module.exports = router;

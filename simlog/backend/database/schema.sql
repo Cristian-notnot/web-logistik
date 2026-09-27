@@ -91,7 +91,7 @@ CREATE TABLE unboxing_pendataan (
   ruangan_id     INT NULL,
   inventaris_id  INT NULL,
   tanggal        DATE NOT NULL,
-  kondisi_umum   ENUM('Baik','Perlu Perhatian','Rusak') NOT NULL DEFAULT 'Baik',
+  kondisi_umum   ENUM('Baik','Perlu Perbaikan','Rusak') NOT NULL DEFAULT 'Baik',
   catatan        TEXT NULL,
   foto_url       VARCHAR(255) NULL,
   dilakukan_oleh INT NULL,

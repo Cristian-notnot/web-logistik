@@ -132,7 +132,7 @@ export default function UnboxingPendataan() {
                 className="w-full rounded-xl border border-slate-300 bg-white py-2.5 px-3.5 text-sm text-slate-700 transition focus:border-brand focus:outline-none"
               >
                 <option value="Baik">Baik</option>
-                <option value="Perlu Perhatian">Perlu Perhatian</option>
+                <option value="Perlu Perbaikan">Perlu Perbaikan</option>
                 <option value="Rusak">Rusak</option>
               </select>
             </div>

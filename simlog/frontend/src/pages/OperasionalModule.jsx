@@ -21,7 +21,7 @@ const configs = {
     forms: [
       {
         title: 'Catat Pemeriksaan Barang',
-        path: '/unboxing', // ← path yang benar
+        path: '/operasional/unboxing',
         fields: [
           ['nama_barang', 'Barang Inventaris', 'text'],
           ['tanggal', 'Tanggal', 'date'],
@@ -184,7 +184,7 @@ const configs = {
 };
 
 const selectStatic = {
-  kondisiRuang: ['Baik', 'Perlu Perhatian', 'Rusak'],
+  kondisiRuang: ['Baik', 'Perlu Perbaikan', 'Rusak'],
   statusPiket: ['Selesai', 'Tidak Terlaksana'],
   statusRevitalisasi: ['Diajukan', 'Proses', 'Selesai', 'Dibatalkan'],
 };
@@ -206,10 +206,10 @@ export default function OperasionalModule({ type }) {
     try {
       setError('');
 
-      // Ambil data utama modul
-      const moduleRes = await api.get(
-        type === 'unboxing' ? '/unboxing' : `/operasional/${type}`
-      );
+     const moduleRes =
+  await api.get(
+    `/operasional/${type}`
+  );
 
       if (type === 'unboxing') {
         setData({ data: moduleRes.data });
