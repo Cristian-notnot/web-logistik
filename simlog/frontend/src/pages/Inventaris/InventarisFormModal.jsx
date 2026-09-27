@@ -14,24 +14,32 @@ export default function InventarisFormModal({ item, onClose, onSuccess, kategori
   });
 
   const [fotoFile, setFotoFile] = useState(null);
+const [previewFoto, setPreviewFoto] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (item) {
-      setFormData({
-        nama_barang: item.nama_barang || '',
-        kategori_id: item.kategori_id || '',
-        ruangan_id: item.ruangan_id || '',
-        jumlah: item.jumlah ?? 0,
-        kondisi: item.kondisi || 'Baik',
-        lokasi_detail: item.lokasi_detail || '',
-        tanggal_pendataan: item.tanggal_pendataan ? item.tanggal_pendataan.split('T')[0] : new Date().toISOString().split('T')[0],
-        catatan: item.catatan || ''
-      });
-    }
-  }, [item]);
 
+  if (item) {
+
+    setFormData({
+      nama_barang: item.nama_barang || '',
+      kategori_id: item.kategori_id || '',
+      ruangan_id: item.ruangan_id || '',
+      jumlah: item.jumlah ?? 0,
+      kondisi: item.kondisi || 'Baik',
+      lokasi_detail: item.lokasi_detail || '',
+      tanggal_pendataan: item.tanggal_pendataan
+        ? item.tanggal_pendataan.split('T')[0]
+        : new Date().toISOString().split('T')[0],
+      catatan: item.catatan || ''
+    });
+
+    setPreviewFoto(item.foto_url || '');
+
+  }
+
+}, [item]);
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -188,12 +196,35 @@ export default function InventarisFormModal({ item, onClose, onSuccess, kategori
 
           <div className="sm:col-span-2">
             <label>Foto Barang</label>
+
+            {previewFoto && (
+  <img
+    src={
+      previewFoto.startsWith('/uploads')
+      ? `http://localhost:5000${previewFoto}`
+      : previewFoto
+    }
+    className="mb-3 h-24 w-24 rounded-xl object-cover border"
+    alt="Foto barang"
+  />
+)}
             <input
-              type="file"
-              accept="image/*"
-              className="w-full border rounded-xl p-2 block"
-              onChange={(e) => setFotoFile(e.target.files[0])}
-            />
+  type="file"
+  accept="image/*"
+  onChange={(e)=>{
+
+    const file = e.target.files[0];
+
+    setFotoFile(file);
+
+    if(file){
+      setPreviewFoto(
+        URL.createObjectURL(file)
+      );
+    }
+
+  }}
+/>
           </div>
 
           <div className="sm:col-span-2">
