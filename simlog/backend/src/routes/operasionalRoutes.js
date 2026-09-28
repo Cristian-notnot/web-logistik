@@ -134,7 +134,6 @@ router.post(
   c.createUnboxing
 );
 
-
 router.get(
   '/piket',
   c.listPiket
@@ -160,12 +159,15 @@ router.get(
 router.post(
   '/sewa/barang',
   admin,
+   upload.none(), 
   c.createBarangSewa
 );
+
 
 router.post(
   '/sewa/peminjaman',
   admin,
+  upload.single('foto_identitas'),
   c.createPeminjaman
 );
 
@@ -202,5 +204,10 @@ router.get(
   '/laporan',
   c.getLaporan
 );
+
+router.put('/peminjaman/:id/approve', admin, c.approvePeminjaman);
+router.put('/peminjaman/:id/return', admin, c.returnPeminjaman);
+router.put('/sewa/barang/:id', admin, upload.none(), c.updateBarangSewa);
+
 
 module.exports = router;

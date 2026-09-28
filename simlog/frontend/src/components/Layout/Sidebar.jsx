@@ -10,7 +10,7 @@ const navItems = [
   { to: '/inventaris', label: 'Inventaris', icon: PackageSearch, active: true },
   { to: '/unboxing', label: 'Unboxing & Pendataan', icon: ClipboardCheck, active: true },
   { to: '/piket', label: 'Piket Mako', icon: CalendarClock, active: true },
-  { to: '/sewa', label: 'Ruang/Barang Sewa', icon: HandCoins, active: true },
+  { to: '/sewa', label: 'Ruang Sewa', icon: HandCoins, active: true },
   { to: '/pengadaan', label: 'Pengadaan', icon: Truck, active: true },
   { to: '/revitalisasi', label: 'Revitalisasi', icon: Wrench, active: true },
   { to: '/laporan', label: 'Laporan', icon: FileBarChart2, active: true },

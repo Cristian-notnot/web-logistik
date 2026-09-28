@@ -146,39 +146,125 @@ CREATE TABLE piket_pelaksanaan (
 ) ENGINE=InnoDB;
 
 CREATE TABLE barang_sewa (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
-  inventaris_id    INT NULL,   
-  nama_barang      VARCHAR(150) NOT NULL,
-  kategori_id      INT NULL,
-  jumlah_total     INT NOT NULL DEFAULT 0,
-  jumlah_tersedia  INT NOT NULL DEFAULT 0,
-  jumlah_disewa    INT NOT NULL DEFAULT 0,
-  status           ENUM('Ready','Sebagian Disewa','Disewa','Rusak','Maintenance','Hilang') NOT NULL DEFAULT 'Ready',
-  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_sewa_inventaris FOREIGN KEY (inventaris_id) REFERENCES inventaris(id) ON DELETE SET NULL,
-  CONSTRAINT fk_sewa_kategori FOREIGN KEY (kategori_id) REFERENCES kategori_barang(id) ON DELETE SET NULL
+  id INT AUTO_INCREMENT PRIMARY KEY,
+
+  inventaris_id INT NULL,
+  nama_barang VARCHAR(150) NOT NULL,
+  kategori_id INT NULL,
+
+  harga_perhari INT NOT NULL DEFAULT 0,
+
+  jumlah_total INT NOT NULL DEFAULT 0,
+  jumlah_tersedia INT NOT NULL DEFAULT 0,
+  jumlah_disewa INT NOT NULL DEFAULT 0,
+
+  status ENUM(
+    'Ready',
+    'Sebagian Disewa',
+    'Disewa',
+    'Rusak',
+    'Maintenance',
+    'Hilang'
+  ) NOT NULL DEFAULT 'Ready',
+
+  foto_url VARCHAR(255) NULL,
+  deskripsi TEXT NULL,
+
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP 
+  ON UPDATE CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_sewa_inventaris 
+    FOREIGN KEY (inventaris_id) 
+    REFERENCES inventaris(id) 
+    ON DELETE SET NULL,
+
+  CONSTRAINT fk_sewa_kategori 
+    FOREIGN KEY (kategori_id) 
+    REFERENCES kategori_barang(id) 
+    ON DELETE SET NULL
+
 ) ENGINE=InnoDB;
 
 CREATE TABLE peminjaman (
-  id                     INT AUTO_INCREMENT PRIMARY KEY,
-  barang_sewa_id         INT NOT NULL,
-  nama_penyewa           VARCHAR(150) NOT NULL,
-  kontak_penyewa         VARCHAR(100) NULL,
-  jumlah_dipinjam        INT NOT NULL DEFAULT 1,
-  tanggal_mulai          DATE NOT NULL,
-  tanggal_kembali_rencana DATE NOT NULL,
-  tanggal_kembali_aktual  DATE NULL,
-  status                 ENUM('Berjalan','Selesai','Terlambat') NOT NULL DEFAULT 'Berjalan',
-  surat_peminjaman_url   VARCHAR(255) NULL,
-  ktm_url                VARCHAR(255) NULL,
-  catatan                TEXT NULL,
-  sumber_input           ENUM('Google Form','Manual') NOT NULL DEFAULT 'Manual',
-  google_form_response_id VARCHAR(150) NULL UNIQUE,
-  dicatat_oleh           INT NULL,
-  created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_pinjam_barang FOREIGN KEY (barang_sewa_id) REFERENCES barang_sewa(id) ON DELETE CASCADE,
-  CONSTRAINT fk_pinjam_user FOREIGN KEY (dicatat_oleh) REFERENCES users(id) ON DELETE SET NULL
+
+  id INT AUTO_INCREMENT PRIMARY KEY,
+
+  nama_penyewa VARCHAR(150) NOT NULL,
+
+  kontak_penyewa VARCHAR(100),
+
+  deskripsi_peminjaman TEXT NULL,
+
+
+  tanggal_pinjam DATE NOT NULL,
+
+  tanggal_kembali DATE NOT NULL,
+
+
+  jumlah_hari INT NOT NULL DEFAULT 1,
+
+
+  total_harga INT NOT NULL DEFAULT 0,
+
+
+  status_pembayaran ENUM(
+    'Belum Lunas',
+    'Lunas'
+  ) DEFAULT 'Belum Lunas',
+
+
+  tanggal_lunas DATETIME NULL,
+
+
+  status_peminjaman ENUM(
+    'Dipinjam',
+    'Selesai',
+    'Terlambat'
+  ) DEFAULT 'Dipinjam',
+
+
+  foto_identitas_url VARCHAR(255) NULL,
+
+
+  surat_peminjaman_url VARCHAR(255) NULL,
+
+
+  dicatat_oleh INT NULL,
+
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  ON UPDATE CURRENT_TIMESTAMP,
+
+
+  CONSTRAINT fk_peminjaman_user
+  FOREIGN KEY (dicatat_oleh)
+  REFERENCES users(id)
+  ON DELETE SET NULL
+
+) ENGINE=InnoDB;
+
+CREATE TABLE detail_peminjaman (
+
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  peminjaman_id INT NOT NULL,
+  barang_sewa_id INT NOT NULL,
+  jumlah INT NOT NULL DEFAULT 1,
+  harga_satuan INT NOT NULL DEFAULT 0,
+  subtotal INT NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_detail_peminjaman
+  FOREIGN KEY (peminjaman_id)
+  REFERENCES peminjaman(id)
+  ON DELETE CASCADE,
+
+  CONSTRAINT fk_detail_barang
+  FOREIGN KEY (barang_sewa_id)
+  REFERENCES barang_sewa(id)
+  ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE pengadaan (
@@ -189,3 +275,4 @@ CREATE TABLE pengadaan (
   status        ENUM('Diajukan','Disetujui','Ditolak','Selesai') NOT NULL DEFAULT 'Diajukan',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+

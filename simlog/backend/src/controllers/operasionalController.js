@@ -285,33 +285,37 @@ exports.createPelaksanaanPiket =
     });
   });
 
+
 exports.listSewa = handler(
   async (req, res) => {
-    const [barang] =
-      await pool.query(`
-        SELECT
-          bs.*,
-          k.nama_kategori
-        FROM barang_sewa bs
-        LEFT JOIN kategori_barang k
-          ON k.id = bs.kategori_id
-        ORDER BY
-          bs.updated_at DESC,
-          bs.id DESC
-      `);
+    const [barang] = await pool.query(`
+      SELECT
+        bs.*,
+        k.nama_kategori
+      FROM barang_sewa bs
+      LEFT JOIN kategori_barang k ON k.id = bs.kategori_id
+      ORDER BY
+        bs.updated_at DESC,
+        bs.id DESC
+    `);
 
-    const [peminjaman] =
-      await pool.query(`
-        SELECT
-          p.*,
-          bs.nama_barang
-        FROM peminjaman p
-        JOIN barang_sewa bs
-          ON bs.id = p.barang_sewa_id
-        ORDER BY
-          p.created_at DESC,
-          p.id DESC
-      `);
+    const [peminjaman] = await pool.query(`
+      SELECT
+        p.id,
+        p.nama_penyewa,
+        p.kontak_penyewa,
+        p.jumlah_dipinjam,
+        p.deskripsi_peminjaman AS catatan,
+        p.tanggal_pinjam AS tanggal_mulai,
+        p.tanggal_kembali AS tanggal_kembali_rencana,
+        p.status_peminjaman AS status,
+        bs.nama_barang
+      FROM peminjaman p
+      JOIN barang_sewa bs ON bs.id = p.barang_sewa_id
+      ORDER BY
+        p.created_at DESC,
+        p.id DESC
+    `);
 
     res.json({
       barang,
@@ -322,64 +326,115 @@ exports.listSewa = handler(
 
 exports.createBarangSewa = handler(
   async (req, res) => {
-    const {
-      nama_barang,
-      kategori_id,
-      jumlah_total,
-    } = req.body;
+    const nama_barang = req.body.nama_barang || req.body.Nama_barang || req.body["Nama barang"];
+    const kategori_id = req.body.kategori_id;
+    const jumlah_total = req.body.jumlah_total || req.body.Jumlah;
+    const harga_perhari = req.body.harga_perhari || req.body["Harga Sewa Per Hari (Rp)"];
 
-    required(
-      nama_barang,
-      'Nama barang'
-    );
+    required(nama_barang, 'Nama barang');
+    required(jumlah_total, 'Jumlah');
+    required(harga_perhari, 'Harga perhari');
 
-    required(
-      jumlah_total,
-      'Jumlah'
-    );
+    const jumlah = Number(jumlah_total);
+    const harga = Number(harga_perhari);
 
-    const jumlah =
-      Number(jumlah_total);
-
-    if (
-      !Number.isInteger(jumlah) ||
-      jumlah < 1
-    ) {
-      const error = new Error(
-        'Jumlah harus berupa angka minimal 1.'
-      );
-
+    if (!Number.isInteger(jumlah) || jumlah < 1) {
+      const error = new Error('Jumlah harus berupa angka minimal 1.');
       error.status = 400;
-
       throw error;
     }
 
-    const [result] =
-      await pool.query(
-        `
-        INSERT INTO barang_sewa (
-          nama_barang,
-          kategori_id,
-          jumlah_total,
-          jumlah_tersedia
-        )
-        VALUES (?, ?, ?, ?)
-        `,
-        [
-          nama_barang.trim(),
-          kategori_id || null,
-          jumlah,
-          jumlah,
-        ]
-      );
+    if (isNaN(harga) || harga < 0) {
+      const error = new Error('Harga sewa tidak valid.');
+      error.status = 400;
+      throw error;
+    }
+
+    const [result] = await pool.query(
+      `
+      INSERT INTO barang_sewa (
+        nama_barang,
+        kategori_id,
+        jumlah_total,
+        jumlah_tersedia,
+        harga_perhari
+      )
+      VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        jumlah_total = jumlah_total + VALUES(jumlah_total),
+        jumlah_tersedia = jumlah_tersedia + VALUES(jumlah_total),
+        harga_perhari = VALUES(harga_perhari),
+        kategori_id = VALUES(kategori_id)
+      `,
+      [
+        nama_barang.trim(),
+        kategori_id || null,
+        jumlah,
+        jumlah,
+        harga,
+      ]
+    );
 
     res.status(201).json({
-      id: result.insertId,
-      message:
-        'Barang sewa tersimpan.',
+      id: result.insertId || null,
+      message: 'Data barang sewa berhasil diperbarui atau ditambahkan.',
     });
   }
 );
+
+exports.updateBarangSewa = handler(
+  async (req, res) => {
+    const { id } = req.params;
+    const nama_barang = req.body.nama_barang || req.body.Nama_barang || req.body["Nama barang"];
+    const kategori_id = req.body.kategori_id;
+    const jumlah_total = req.body.jumlah_total || req.body.Jumlah;
+    const harga_perhari = req.body.harga_perhari || req.body["Harga Sewa Per Hari (Rp)"];
+    const status = req.body.status || req.body.Status;
+
+    required(nama_barang, 'Nama barang');
+    required(jumlah_total, 'Jumlah total');
+    required(harga_perhari, 'Harga perhari');
+    required(status, 'Status');
+
+    const total = Number(jumlah_total);
+    const harga = Number(harga_perhari);
+
+    const [[barang]] = await pool.query('SELECT jumlah_disewa FROM barang_sewa WHERE id = ?', [id]);
+    if (!barang) {
+      const error = new Error('Barang tidak ditemukan.');
+      error.status = 404;
+      throw error;
+    }
+
+    const disewa = Number(barang.jumlah_disewa);
+    const tersedia = total - disewa;
+
+    if (tersedia < 0) {
+      const error = new Error('Jumlah total tidak boleh lebih kecil dari jumlah barang yang sedang disewa.');
+      error.status = 400;
+      throw error;
+    }
+
+    await pool.query(
+      `
+      UPDATE barang_sewa 
+      SET 
+        nama_barang = ?, 
+        kategori_id = ?, 
+        jumlah_total = ?, 
+        jumlah_tersedia = ?, 
+        harga_perhari = ?, 
+        status = ?
+      WHERE id = ?
+      `,
+      [nama_barang.trim(), kategori_id || null, total, tersedia, harga, status, id]
+    );
+
+    res.json({ message: 'Data barang sewa berhasil diperbarui secara manual.' });
+  }
+);
+
+
 
 exports.createPeminjaman = handler(
   async (req, res) => {
@@ -391,156 +446,81 @@ exports.createPeminjaman = handler(
       tanggal_mulai,
       tanggal_kembali_rencana,
       catatan,
+      total_harga,
     } = req.body;
 
-    required(
-      barang_sewa_id,
-      'Barang'
-    );
+    required(barang_sewa_id, 'Barang');
+    required(nama_penyewa, 'Penyewa');
+    required(jumlah_dipinjam, 'Jumlah');
+    required(tanggal_mulai, 'Tanggal mulai');
+    required(tanggal_kembali_rencana, 'Tanggal kembali');
 
-    required(
-      nama_penyewa,
-      'Penyewa'
-    );
-
-    required(
-      jumlah_dipinjam,
-      'Jumlah'
-    );
-
-    required(
-      tanggal_mulai,
-      'Tanggal mulai'
-    );
-
-    required(
-      tanggal_kembali_rencana,
-      'Tanggal kembali'
-    );
-
-    if (
-      new Date(
-        tanggal_kembali_rencana
-      ) <
-      new Date(tanggal_mulai)
-    ) {
-      const error = new Error(
-        'Tanggal kembali tidak boleh lebih awal dari tanggal mulai.'
-      );
-
+    if (new Date(tanggal_kembali_rencana) < new Date(tanggal_mulai)) {
+      const error = new Error('Tanggal kembali tidak boleh lebih awal dari tanggal mulai.');
       error.status = 400;
-
       throw error;
     }
 
-    const jumlah =
-      Number(jumlah_dipinjam);
-
-    const conn =
-      await pool.getConnection();
+    const foto_identitas_url = req.file ? `/uploads/${req.file.filename}` : null;
+    const jumlah = Number(jumlah_dipinjam);
+    const totalHargaFinal = Number(total_harga) || 0;
+    const conn = await pool.getConnection();
 
     try {
       await conn.beginTransaction();
 
-      const [[barang]] =
-        await conn.query(
-          `
-          SELECT *
-          FROM barang_sewa
-          WHERE id = ?
-          FOR UPDATE
-          `,
-          [barang_sewa_id]
-        );
+      const [[barang]] = await conn.query(
+        `SELECT * FROM barang_sewa WHERE id = ? FOR UPDATE`,
+        [barang_sewa_id]
+      );
 
       if (!barang) {
-        const error = new Error(
-          'Barang sewa tidak ditemukan.'
-        );
-
+        const error = new Error('Barang sewa tidak ditemukan.');
         error.status = 404;
-
         throw error;
       }
 
-      if (
-        !Number.isInteger(jumlah) ||
-        jumlah < 1
-      ) {
-        const error = new Error(
-          'Jumlah peminjaman tidak valid.'
-        );
-
+      if (jumlah > Number(barang.jumlah_tersedia)) {
+        const error = new Error('Stok barang tidak mencukupi.');
         error.status = 400;
-
         throw error;
       }
 
-      if (
-        jumlah >
-        Number(barang.jumlah_tersedia)
-      ) {
-        const error = new Error(
-          'Stok barang tidak mencukupi.'
-        );
+      const tglMulai = new Date(tanggal_mulai);
+      const tglKembali = new Date(tanggal_kembali_rencana);
+      const selisihWaktu = tglKembali.getTime() - tglMulai.getTime();
+      const jumlahHari = Math.max(1, Math.ceil(selisihWaktu / (1000 * 3600 * 24)));
 
-        error.status = 400;
-
-        throw error;
-      }
-
-      const [result] =
-        await conn.query(
-          `
-          INSERT INTO peminjaman (
-            barang_sewa_id,
-            nama_penyewa,
-            kontak_penyewa,
-            jumlah_dipinjam,
-            tanggal_mulai,
-            tanggal_kembali_rencana,
-            catatan,
-            dicatat_oleh
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `,
-          [
-            barang_sewa_id,
-            nama_penyewa.trim(),
-            kontak_penyewa || null,
-            jumlah,
-            tanggal_mulai,
-            tanggal_kembali_rencana,
-            catatan || null,
-            req.user?.id || null,
-          ]
-        );
-
-      const tersedia =
-        Number(
-          barang.jumlah_tersedia
-        ) - jumlah;
-
-      const status =
-        tersedia === 0
-          ? 'Disewa'
-          : 'Sebagian Disewa';
-
-      await conn.query(
+      const [result] = await conn.query(
         `
-        UPDATE barang_sewa
-        SET
-          jumlah_tersedia = ?,
-          jumlah_disewa =
-            jumlah_disewa + ?,
-          status = ?
-        WHERE id = ?
+        INSERT INTO peminjaman (
+          barang_sewa_id,
+          nama_penyewa,
+          kontak_penyewa,
+          jumlah_dipinjam,
+          total_harga,
+          jumlah_hari,
+          tanggal_pinjam,
+          tanggal_kembali,
+          deskripsi_peminjaman,
+          foto_identitas_url,
+          dicatat_oleh,
+          status_peminjaman
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Menunggu Persetujuan')
         `,
         [
-          tersedia,
-          jumlah,
-          status,
           barang_sewa_id,
+          nama_penyewa.trim(),
+          kontak_penyewa || null,
+          jumlah,
+          totalHargaFinal,
+          jumlahHari,
+          tanggal_mulai,
+          tanggal_kembali_rencana,
+          catatan || null,
+          foto_identitas_url,
+          req.user?.id || null,
         ]
       );
 
@@ -548,9 +528,155 @@ exports.createPeminjaman = handler(
 
       res.status(201).json({
         id: result.insertId,
-        message:
-          'Peminjaman tersimpan.',
+        message: 'Permohonan peminjaman berhasil dibuat, menunggu persetujuan admin.',
       });
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }
+);
+
+
+exports.approvePeminjaman = handler(
+  async (req, res) => {
+    const { id } = req.params;
+    const conn = await pool.getConnection();
+
+    try {
+      await conn.beginTransaction();
+
+      const [[peminjaman]] = await conn.query(
+        `
+        SELECT 
+          p.id, 
+          p.barang_sewa_id, 
+          p.jumlah_dipinjam, 
+          p.status_peminjaman,
+          b.jumlah_tersedia, 
+          b.jumlah_disewa
+        FROM peminjaman p
+        JOIN barang_sewa b ON b.id = p.barang_sewa_id
+        WHERE p.id = ? FOR UPDATE
+        `,
+        [id]
+      );
+
+      if (!peminjaman) {
+        const error = new Error('Data peminjaman tidak ditemukan.');
+        error.status = 404;
+        throw error;
+      }
+
+      if (peminjaman.status_peminjaman !== 'Menunggu Persetujuan') {
+        const error = new Error('Peminjaman sudah disetujui atau diproses sebelumnya.');
+        error.status = 400;
+        throw error;
+      }
+
+      const jumlah_pinjam = Number(peminjaman.jumlah_dipinjam);
+      const tersedia_sekarang = Number(peminjaman.jumlah_tersedia);
+
+      if (jumlah_pinjam > tersedia_sekarang) {
+        const error = new Error('Stok barang saat ini tidak mencukupi untuk disetujui.');
+        error.status = 400;
+        throw error;
+      }
+
+      await conn.query(
+        `UPDATE peminjaman SET status_peminjaman = 'Dipinjam' WHERE id = ?`,
+        [id]
+      );
+
+      const sisa_tersedia = tersedia_sekarang - jumlah_pinjam;
+      const status_barang = sisa_tersedia === 0 ? 'Disewa' : 'Sebagian Disewa';
+
+      await conn.query(
+        `
+        UPDATE barang_sewa
+        SET
+          jumlah_tersedia = ?,
+          jumlah_disewa = jumlah_disewa + ?,
+          status = ?
+        WHERE id = ?
+        `,
+        [sisa_tersedia, jumlah_pinjam, status_barang, peminjaman.barang_sewa_id]
+      );
+
+      await conn.commit();
+      res.json({ message: 'Peminjaman disetujui, stok berhasil dipotong otomatis.' });
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }
+);
+
+exports.returnPeminjaman = handler(
+  async (req, res) => {
+    const { id } = req.params;
+    const conn = await pool.getConnection();
+
+    try {
+      await conn.beginTransaction();
+
+      const [[peminjaman]] = await conn.query(
+        `
+        SELECT 
+          p.id, 
+          p.barang_sewa_id, 
+          p.jumlah_dipinjam, 
+          p.status_peminjaman,
+          b.jumlah_tersedia, 
+          b.jumlah_disewa
+        FROM peminjaman p
+        JOIN barang_sewa b ON b.id = p.barang_sewa_id
+        WHERE p.id = ? FOR UPDATE
+        `,
+        [id]
+      );
+
+      if (!peminjaman) {
+        const error = new Error('Data peminjaman tidak ditemukan.');
+        error.status = 404;
+        throw error;
+      }
+
+      if (peminjaman.status_peminjaman !== 'Dipinjam' && peminjaman.status_peminjaman !== 'Terlambat') {
+        const error = new Error('Peminjaman belum disetujui atau sudah selesai dikembalikan.');
+        error.status = 400;
+        throw error;
+      }
+
+      const jumlah_pinjam = Number(peminjaman.jumlah_dipinjam);
+
+      await conn.query(
+        `UPDATE peminjaman SET status_peminjaman = 'Selesai' WHERE id = ?`,
+        [id]
+      );
+
+      const stok_pulih = Number(peminjaman.jumlah_tersedia) + jumlah_pinjam;
+      const disewa_baru = Math.max(0, Number(peminjaman.jumlah_disewa) - jumlah_pinjam);
+      const status_barang = disewa_baru === 0 ? 'Ready' : 'Sebagian Disewa';
+
+      await conn.query(
+        `
+        UPDATE barang_sewa
+        SET
+          jumlah_tersedia = ?,
+          jumlah_disewa = ?,
+          status = ?
+        WHERE id = ?
+        `,
+        [stok_pulih, disewa_baru, status_barang, peminjaman.barang_sewa_id]
+      );
+
+      await conn.commit();
+      res.json({ message: 'Barang berhasil dikembalikan, stok dipulihkan otomatis.' });
     } catch (err) {
       await conn.rollback();
       throw err;
