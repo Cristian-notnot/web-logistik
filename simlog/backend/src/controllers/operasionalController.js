@@ -1022,7 +1022,7 @@ exports.getLaporan = handler(
           COALESCE(
             SUM(
               CASE
-                WHEN status = 'Berjalan'
+                WHEN status_peminjaman = 'Dipinjam'
                 THEN jumlah_dipinjam
                 ELSE 0
               END
@@ -1032,7 +1032,7 @@ exports.getLaporan = handler(
           COALESCE(
             SUM(
               CASE
-                WHEN status = 'Berjalan'
+                WHEN status_peminjaman = 'Dipinjam'
                 THEN 1
                 ELSE 0
               END
@@ -1056,24 +1056,24 @@ exports.getLaporan = handler(
       `);
 
     const [[revitalisasi]] =
-      await pool.query(`
-        SELECT
-          COUNT(*) AS total,
-          COALESCE(
-            SUM(
-              CASE
-                WHEN status IN (
-                  'Terbuka',
-                  'Diproses'
-                )
-                THEN 1
-                ELSE 0
-              END
-            ),
-            0
-          ) AS terbuka
-        FROM kerusakan_laporan
-      `);
+  await pool.query(`
+    SELECT
+      COUNT(*) AS total,
+      COALESCE(
+        SUM(
+          CASE
+            WHEN status IN (
+              'Baru',
+              'Diproses'
+            )
+            THEN 1
+            ELSE 0
+          END
+        ),
+        0
+      ) AS terbuka
+    FROM kerusakan_laporan
+  `);
 
     res.json({
       inventaris: {

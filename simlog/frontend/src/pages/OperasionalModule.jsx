@@ -321,7 +321,7 @@ export default function OperasionalModule({ type }) {
     return hargaPerHari * jumlahBarang * jumlahHari;
   }, [formValues, data.barang, type, open, config.forms]);
   
-    const handleSubmit = async (e, path) => {
+      const handleSubmit = async (e, path) => {
     e.preventDefault();
     setError('');
     setNotice('');
@@ -360,20 +360,6 @@ export default function OperasionalModule({ type }) {
     }
   };
 
-
-    try {
-      const res = await api.post(path, formData);
-      setNotice(res.data.message);
-      setOpen(null);
-       setEditItem(null);
-    
-      e.target.reset(); 
-      
-      load();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Gagal menyimpan data.');
-    }
-  };
 
 
   const options = (source) => {
@@ -653,81 +639,8 @@ export default function OperasionalModule({ type }) {
                   </tbody>
                 </table>
               </div>
-            </div>
-          );
-        })}
-      </div>
-                    {rows.map((row, index) => (
-                      <tr
-                        key={row.id ?? index}
-                        className="border-t border-gray-100 hover:bg-gray-50"
-                      >
-                        {section.columns.map((column) => (
-                          <td key={column} className="px-4 py-3 text-gray-700">
-                            {column === 'foto_url' && row[column] ? (
-                              <a
-                                href={row[column]}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-teal-600 hover:underline"
-                              >
-                                <Camera size={14} /> Lihat
-                              </a>
-                            ) : column.includes('tanggal') ||
-                              column.includes('minggu') ? (
-                              row[column]
-                                ? new Date(row[column]).toLocaleDateString('id-ID')
-                                : '-'
-                            ) : (
-                              row[column]?.toString() || '-'
-                            )}
-                          </td>
-                        ))}
-                        {type === 'sewa' && isUserAdmin && (
-                          <td className="px-4 py-3 flex gap-2">
-                            {section.key === 'barang' && (
-                              <button
-                                type="button"
-                                onClick={() => setEditItem(row)}
-                                className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 transition-colors"
-                              >
-                                Edit Barang
-                              </button>
-                            )}
-
-                            {section.key === 'peminjaman' && (
-                              <>
-                                {row.status === 'Menunggu Persetujuan' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleApprove(row.id)}
-                                    className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 transition-colors"
-                                  >
-                                    Setujui
-                                  </button>
-                                )}
-                                {(row.status === 'Dipinjam' || row.status === 'Terlambat') && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleReturn(row.id)}
-                                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
-                                  >
-                                    Selesai
-                                  </button>
-                                )}
-                                {row.status === 'Selesai' && (
-                                  <span className="text-xs font-medium text-gray-400">Selesai</span>
-                                )}
-                              </>
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                )}
               </div>
-            </div>
           );
         })}
       </div>
