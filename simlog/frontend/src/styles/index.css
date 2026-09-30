@@ -4,11 +4,12 @@
 
 :root {
   color-scheme: light;
-  --app-bg: #f5f1ea;
-  --panel: rgba(255, 255, 255, 0.9);
-  --line: #e7e2da;
-  --text: #1f2937;
-  --muted: #64748b;
+
+  --app-bg:#F8FAFC;
+  --panel:#FFFFFF;
+  --line:#E2E8F0;
+  --text:#0F172A;
+  --muted:#64748B;
 }
 
 html, body, #root {
@@ -33,7 +34,7 @@ button, input, select, textarea {
 }
 
 ::selection {
-  background: rgba(31, 111, 95, 0.18);
+  background: rgba(37,99,235,0.18);
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }

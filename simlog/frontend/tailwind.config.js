@@ -8,23 +8,37 @@ export default {
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       colors: {
-        base: {
-          dark: '#12232C',
-          dark2: '#1B2C36',
-          app: '#F5F1EA',
-        },
-        brand: {
-          DEFAULT: '#1F6F5F',
-          light: '#E8F4EF',
-          dark: '#194F43',
-        },
-        status: {
-          baik: '#1E8E67',
-          rusak: '#D9534F',
-          hilang: '#5A6678',
-          maintenance: '#C57B1C',
-        },
-      },
+  base: {
+    dark: '#0F172A',
+    dark2: '#1E293B',
+    app: '#F8FAFC',
+  },
+
+  brand: {
+    DEFAULT: '#2563EB',
+    light: '#DBEAFE',
+    dark: '#1D4ED8',
+  },
+
+  secondary: {
+    DEFAULT: '#059669',
+    light: '#D1FAE5',
+    dark: '#047857',
+  },
+
+  accent: {
+    DEFAULT: '#F97316',
+    light: '#FFEDD5',
+    dark: '#C2410C',
+  },
+
+  status: {
+    baik: '#059669',
+    rusak: '#DC2626',
+    hilang: '#64748B',
+    maintenance: '#D97706',
+  },
+},
       boxShadow: {
         card: '0 10px 30px rgba(15, 23, 42, 0.06), 0 2px 10px rgba(15, 23, 42, 0.04)',
       },

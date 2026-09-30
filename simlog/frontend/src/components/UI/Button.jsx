@@ -1,8 +1,9 @@
 import React from 'react';
 
 const variants = {
-  primary: 'bg-brand text-white hover:bg-brand-dark shadow-sm',
-  secondary: 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50',
+  primary:
+  'bg-brand text-white hover:bg-brand-dark shadow-md',
+  secondary: 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50',
   danger: 'bg-red-600 text-white hover:bg-red-700 shadow-sm',
   ghost: 'text-slate-600 hover:bg-slate-100',
 };
