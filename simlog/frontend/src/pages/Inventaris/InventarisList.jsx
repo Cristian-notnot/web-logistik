@@ -8,7 +8,6 @@ import {
   Eye,
   FileSpreadsheet
 } from 'lucide-react';
-
 import DashboardLayout from '../../components/Layout/DashboardLayout';
 import Button from '../../components/UI/Button';
 import KondisiBadge from '../../components/UI/KondisiBadge';
@@ -28,6 +27,8 @@ export default function InventarisList() {
 
   const [kategoriList, setKategoriList] = useState([]);
   const [ruanganList, setRuanganList] = useState([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [ruanganError, setRuanganError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -50,7 +51,6 @@ export default function InventarisList() {
           page
         }
       });
-
       setData(res.data);
       setPagination(res.pagination);
 
@@ -61,7 +61,6 @@ export default function InventarisList() {
         err.response?.data?.message ||
         'Data inventaris gagal dimuat.'
       );
-
     } finally {
 
       setLoading(false);
@@ -69,29 +68,35 @@ export default function InventarisList() {
     }
   }, [search, kondisi, kategoriId]);
 
-  useEffect(() => {
-
-    Promise.all([
+  const loadMasterData = useCallback(async () => {
+    setLoadingRooms(true);
+    setRuanganError('');
+    const [kategoriResult, ruanganResult] = await Promise.allSettled([
       api.get('/master/kategori'),
       api.get('/master/ruangan')
-    ])
+    ]);
 
-    .then(([kategori, ruangan]) => {
-      setKategoriList(kategori.data);
-      setRuanganList(ruangan.data);
+    if (kategoriResult.status === 'fulfilled') {
+      setKategoriList(Array.isArray(kategoriResult.value.data) ? kategoriResult.value.data : []);
+    } else {
+      setError(kategoriResult.reason.response?.data?.message || 'Data kategori gagal dimuat.');
+    }
 
-    })
+    if (ruanganResult.status === 'fulfilled') {
+      const ruanganData = Array.isArray(ruanganResult.value.data) ? ruanganResult.value.data : [];
+      setRuanganList(ruanganData);
+      setRuanganError(ruanganData.length ? '' : 'Belum ada ruangan yang terdaftar.');
+    } else {
+      setRuanganList([]);
+      setRuanganError(ruanganResult.reason.response?.data?.message || 'Data ruangan gagal dimuat.');
+    }
 
-    .catch(err => {
-
-      setError(
-        err.response?.data?.message ||
-        'Data master gagal dimuat.'
-      );
-
-    });
-
+    setLoadingRooms(false);
   }, []);
+
+  useEffect(() => {
+    loadMasterData();
+  }, [loadMasterData]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -119,10 +124,8 @@ export default function InventarisList() {
     }
 
   }
-
   const handleExport = () => {
     const formatted = data.map(item => ({
-
       'Nama Barang': item.nama_barang,
       'Kategori': item.nama_kategori || '—',
       'Jumlah': item.jumlah,
@@ -138,7 +141,6 @@ export default function InventarisList() {
       'Laporan_Inventaris_HW_UNIMUS'
     );
   };
-
   const renderFoto = (item) => {
     const namaFoto = item.foto || item.foto_url;
 
@@ -153,7 +155,6 @@ export default function InventarisList() {
         </span>
       );
     }
-
     const srcUrl = namaFoto.startsWith('http')
       ? namaFoto
       : `http://localhost:5000/uploads/${namaFoto}`;
@@ -172,9 +173,7 @@ export default function InventarisList() {
 
         alt={item.nama_barang}
         onError={(e) => {
-
           e.target.onerror = null;
-
           e.target.src =
             `http://localhost:5000${namaFoto.startsWith('/') ? '' : '/'}${namaFoto}`;
 
@@ -184,13 +183,11 @@ export default function InventarisList() {
     );
 
   };
-
   return (
 
     <DashboardLayout
       title="Inventaris"
       subtitle="Kelola seluruh barang logistik Mako beserta riwayat perubahannya"
-
     >
       <div className="
         mb-5
@@ -207,7 +204,6 @@ export default function InventarisList() {
           <Search
 
             size={16}
-
             className="
               absolute
               left-3
@@ -218,7 +214,6 @@ export default function InventarisList() {
           />
 
           <input
-
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nama barang..."
@@ -237,7 +232,6 @@ export default function InventarisList() {
               focus:ring-2
               focus:ring-blue-100
             "
-
           />
 
         </div>
@@ -300,7 +294,6 @@ export default function InventarisList() {
             focus:ring-blue-100
           "
         >
-
           <option value="">
             Semua Kategori
           </option>
@@ -316,16 +309,13 @@ export default function InventarisList() {
                 {k.nama_kategori}
 
               </option>
-
             ))
           }
 
         </select>
 
         <button
-
           onClick={handleExport}
-
           className="
             flex
             items-center
@@ -342,7 +332,6 @@ export default function InventarisList() {
             hover:bg-emerald-700
           "
         >
-
           <FileSpreadsheet size={16}/>
           Ekspor Excel
 
@@ -352,13 +341,12 @@ export default function InventarisList() {
           isAdmin && (
             <Button
               onClick={() => {
-
                 setEditingItem(null);
+                loadMasterData();
                 setFormOpen(true);
               }}
 
             >
-
               <Plus size={16}/>
               Tambah Barang
             </Button>
@@ -367,8 +355,6 @@ export default function InventarisList() {
         }
 
       </div>
-
-
       {
         error && (
           <div
@@ -383,7 +369,6 @@ export default function InventarisList() {
               text-red-700
             "
           >
-
             {error}
           </div>
 
@@ -391,32 +376,22 @@ export default function InventarisList() {
       }
 
       {/* TABLE */}
-
       <div
 
         className="
           overflow-hidden
           rounded-xl
           border
-          border-slate-200
+          border-emerald-100
           bg-white
-          shadow-sm
+          shadow-[0_10px_30px_rgba(21,78,66,0.08)]
         "
       >
-
         <table className="w-full text-sm">
 
           <thead>
 
-            <tr
-
-              className="
-                bg-slate-100
-                text-left
-                text-slate-700
-              "
-            >
-
+            <tr className="bg-emerald-800 text-left text-white">
               <th className="
                 px-5
                 py-3
@@ -482,56 +457,46 @@ export default function InventarisList() {
               ">
                 Aksi
               </th>
-
             </tr>
-
           </thead>
-
           <tbody>
 
             {
               loading && (
-
                 <tr>
 
                   <td
 
                     colSpan="6"
-
                     className="
                       p-10
                       text-center
                       text-slate-400
                     "
                   >
-
                     Memuat data...
 
                   </td>
-
                 </tr>
 
               )
             }
-
             {
               !loading &&
               data.map(item => (
-
                 <tr
                   key={item.id}
 
                   className="
                     border-b
-                    border-slate-100
+                    border-emerald-50
+                    odd:bg-white
+                    even:bg-emerald-50/50
                     transition
-                    hover:bg-blue-50
+                    hover:bg-amber-50
                     last:border-0
                   "
-
                 >
-
-
                   <td className="
                     flex
                     items-center
@@ -541,7 +506,6 @@ export default function InventarisList() {
                   ">
 
                     {renderFoto(item)}
-
                     <span className="
                       font-medium
                       text-slate-800
@@ -549,15 +513,12 @@ export default function InventarisList() {
                       {item.nama_barang}
                     </span>
 
-
                   </td>
-
                   <td className="px-5 text-slate-700">
 
                     {item.nama_kategori || '—'}
 
                   </td>
-
                   <td className="
                     px-5
                     font-medium
@@ -567,22 +528,18 @@ export default function InventarisList() {
                     {item.jumlah}
 
                   </td>
-
                   <td className="px-5">
 
                     <KondisiBadge
                       kondisi={item.kondisi}
                     />
-
                   </td>
-
                   <td className="
                     px-5
                     py-3
                     text-slate-500
                   ">
                     <div>
-
                       <div className="text-slate-700">
                         {item.nama_ruangan || '—'}
 
@@ -604,9 +561,7 @@ export default function InventarisList() {
 
                   <td className="px-5">
                     <div className="flex gap-1.5">
-
                       <button
-
                         onClick={() => setDetailItem(item)}
 
                         className="
@@ -619,23 +574,19 @@ export default function InventarisList() {
                         "
                       >
                         <Eye size={16}/>
-
                       </button>
                       {
                         isAdmin && (
 
                           <>
-
-
                             <button
 
                               onClick={() => {
 
                                 setEditingItem(item);
+                                loadMasterData();
                                 setFormOpen(true);
-
                               }}
-
                               className="
                                 rounded-lg
                                 p-1.5
@@ -647,9 +598,7 @@ export default function InventarisList() {
                             >
                               <Pencil size={16}/>
                             </button>
-
                             <button
-
                               onClick={() => handleDelete(item)}
                               className="
                                 rounded-lg
@@ -664,15 +613,11 @@ export default function InventarisList() {
                             </button>
 
                           </>
-
                         )
                       }
                     </div>
-
                   </td>
-
                 </tr>
-
               ))
             }
 
@@ -692,6 +637,9 @@ export default function InventarisList() {
 
             kategoriList={kategoriList}
             ruanganList={ruanganList}
+            ruanganError={ruanganError}
+            loadingRooms={loadingRooms}
+            onRetryRooms={loadMasterData}
           />
         )
       }

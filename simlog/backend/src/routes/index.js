@@ -6,6 +6,7 @@ router.use('/inventaris', require('./inventarisRoutes'));
 router.use('/master', require('./masterDataRoutes'));
 router.use('/upload', require('./uploadRoutes'));
 router.use('/operasional', require('./operasionalRoutes'));
+router.use(require('./homepageRoutes'));
 
 // --- Modul fase berikutnya (roadmap) ---
 // Rute-rute ini akan diaktifkan bertahap sesuai urutan prioritas:

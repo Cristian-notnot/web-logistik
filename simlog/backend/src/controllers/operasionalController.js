@@ -760,45 +760,40 @@ exports.createPengadaan = handler(
     }
 
     const [result] =
-      await pool.query(
-        `
-        INSERT INTO pengadaan (
-          nama_pengadaan,
-          nama_barang,
-          jumlah,
-          anggaran,
-          tanggal,
-          harga,
-          sumber_dana,
-          kondisi,
-          lokasi_id,
-          catatan,
-          dicatat_oleh
-        )
-        VALUES (
-          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-        )
-        `,
-        [
-          nama_barang.trim(),
-          nama_barang.trim(),
-          qty,
-          nilaiHarga,
-          tanggal,
-          nilaiHarga,
-          sumber_dana || null,
-          kondisi,
-          lokasi_id || null,
-          catatan || null,
-          req.user?.id || null,
-        ]
-      );
+  await pool.query(
+    `
+    INSERT INTO pengadaan (
+      nama_barang,
+      jumlah,
+      tanggal,
+      harga,
+      sumber_dana,
+      kondisi,
+      lokasi_id,
+      catatan,
+      dicatat_oleh
+    )
+    VALUES (
+      ?, ?, ?, ?, ?, ?, ?, ?, ?
+    )
+    `,
+    [
+      nama_barang.trim(),
+      qty,
+      tanggal,
+      nilaiHarga,
+      sumber_dana || null,
+      kondisi,
+      lokasi_id || null,
+      catatan || null,
+      req.user?.id || null,
+    ]
+  );
 
-    res.status(201).json({
-      id: result.insertId,
-      message:
-        'Pengadaan tersimpan.',
-    });
+res.status(201).json({
+  id: result.insertId,
+  message: 'Pengadaan tersimpan.',
+});
   }
 );
 

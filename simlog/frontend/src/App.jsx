@@ -6,7 +6,14 @@ import InventarisList from './pages/Inventaris/InventarisList';
 import OperasionalModule from './pages/OperasionalModule';
 import Profile from './pages/Profile';
 import Reports from './pages/Reports';
+import HomepageManager from './pages/HomepageManager';
 import ProtectedRoute from './components/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
+
+function AdminRoute({ children }) {
+  const { isAdmin } = useAuth();
+  return isAdmin ? children : <Navigate to="/dashboard" replace />;
+}
 
 export default function App() {
   return (
@@ -14,6 +21,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
 
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/kelola-beranda" element={<ProtectedRoute><AdminRoute><HomepageManager /></AdminRoute></ProtectedRoute>} />
       <Route path="/inventaris" element={<ProtectedRoute><InventarisList /></ProtectedRoute>} />
       <Route path="/unboxing" element={<ProtectedRoute><OperasionalModule type="unboxing" /></ProtectedRoute>} />
       <Route path="/piket" element={<ProtectedRoute><OperasionalModule type="piket" /></ProtectedRoute>} />

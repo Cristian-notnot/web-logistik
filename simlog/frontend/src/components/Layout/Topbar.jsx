@@ -38,8 +38,8 @@ export default function Topbar({
         h-16
         shrink-0
         border-b
-        border-slate-200
-        bg-white
+        border-emerald-100
+        bg-white/95
         px-6
       "
     >
@@ -152,8 +152,8 @@ export default function Topbar({
                     items-center
                     justify-center
                     rounded-full
-                    bg-blue-100
-                    text-blue-600
+                    bg-amber-100
+                    text-amber-700
                   "
                 >
 

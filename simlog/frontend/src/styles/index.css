@@ -5,9 +5,9 @@
 :root {
   color-scheme: light;
 
-  --app-bg:#F8FAFC;
+  --app-bg:#F2F7F4;
   --panel:#FFFFFF;
-  --line:#E2E8F0;
+  --line:#D9E8E0;
   --text:#0F172A;
   --muted:#64748B;
 }
@@ -18,7 +18,10 @@ html, body, #root {
 
 body {
   margin: 0;
-  background: var(--app-bg);
+  background-color: var(--app-bg);
+  background-image:
+    radial-gradient(ellipse at 8% 12%, rgba(58, 145, 116, 0.10), transparent 30%),
+    radial-gradient(ellipse at 92% 88%, rgba(242, 181, 73, 0.08), transparent 28%);
   color: var(--text);
   font-family: Inter, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;

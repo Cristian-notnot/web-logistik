@@ -142,6 +142,7 @@ router.get(
 router.post(
   '/piket/jadwal',
   admin,
+  upload.none(),
   c.createJadwalPiket
 );
 
@@ -179,6 +180,7 @@ router.get(
 router.post(
   '/pengadaan',
   admin,
+  upload.none(),
   c.createPengadaan
 );
 
@@ -197,6 +199,7 @@ router.post(
 router.post(
   '/revitalisasi',
   admin,
+  upload.none(),
   c.createRevitalisasi
 );
 

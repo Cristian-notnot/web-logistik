@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 
-export default function InventarisFormModal({ item, onClose, onSuccess, kategoriList, ruanganList }) {
+export default function InventarisFormModal({
+  item,
+  onClose,
+  onSuccess,
+  kategoriList,
+  ruanganList,
+  ruanganError,
+  loadingRooms,
+  onRetryRooms
+}) {
   const [formData, setFormData] = useState({
     nama_barang: '',
     kategori_id: '',
@@ -14,7 +23,7 @@ export default function InventarisFormModal({ item, onClose, onSuccess, kategori
   });
 
   const [fotoFile, setFotoFile] = useState(null);
-const [previewFoto, setPreviewFoto] = useState('');
+  const [previewFoto, setPreviewFoto] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -56,13 +65,9 @@ const [previewFoto, setPreviewFoto] = useState('');
 
     try {
       if (item) {
-        await api.put(`/inventaris/${item.id}`, data, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        await api.put(`/inventaris/${item.id}`, data);
       } else {
-        await api.post('/inventaris', data, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        await api.post('/inventaris', data);
       }
       onSuccess();
     } catch (err) {
@@ -72,30 +77,9 @@ const [previewFoto, setPreviewFoto] = useState('');
     }
   };
 
-  const dapatkanDaftarRuangan = () => {
-    const dataDariAPI = (ruanganList || [])
-      .filter(r => {
-        const nama = r.nama_ruangan?.toLowerCase() || '';
-        return nama.includes('mako') || nama.includes('gudang');
-      })
-      .map(r => {
-        const namaAsli = r.nama_ruangan?.toLowerCase() || '';
-        return {
-          id: r.id,
-          nama: namaAsli.includes('gudang') ? 'Gudang' : 'Mako'
-        };
-      });
-
-    const adaMako = dataDariAPI.some(r => r.nama === 'Mako');
-    const adaGudang = dataDariAPI.some(r => r.nama === 'Gudang');
-
-    if (!adaMako) dataDariAPI.push({ id: 1, nama: 'Mako' });
-    if (!adaGudang) dataDariAPI.push({ id: 2, nama: 'Gudang' });
-
-    return dataDariAPI;
-  };
-
-  const daftarRuanganFinal = dapatkanDaftarRuangan();
+  const daftarRuanganFinal = (ruanganList || []).filter(
+    ruangan => ruangan?.id != null && ruangan.nama_ruangan?.trim()
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
@@ -142,11 +126,30 @@ const [previewFoto, setPreviewFoto] = useState('');
               onChange={(e) => setFormData({ ...formData, ruangan_id: e.target.value })}
               className="w-full border rounded-xl p-2"
             >
-              <option value="">-- Pilih Ruangan --</option>
+              <option value="">
+                {loadingRooms
+                  ? 'Memuat ruangan...'
+                  : daftarRuanganFinal.length
+                  ? '-- Pilih Ruangan --'
+                  : 'Ruangan belum tersedia (opsional)'}
+              </option>
               {daftarRuanganFinal.map(r => (
-                <option key={r.id} value={r.id}>{r.nama}</option>
+                <option key={r.id} value={r.id}>{r.nama_ruangan}</option>
               ))}
             </select>
+            {!daftarRuanganFinal.length && (
+              <div className="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500">
+                <span role="status">{ruanganError || 'Data ruangan belum tersedia.'}</span>
+                <button
+                  type="button"
+                  onClick={onRetryRooms}
+                  disabled={loadingRooms}
+                  className="shrink-0 font-semibold text-emerald-700 hover:text-emerald-900 disabled:opacity-50"
+                >
+                  {loadingRooms ? 'Memuat...' : 'Coba lagi'}
+                </button>
+              </div>
+            )}
           </div>
 
           <div>

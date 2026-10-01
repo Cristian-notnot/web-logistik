@@ -9,7 +9,9 @@ import {
   Truck,
   Wrench,
   FileBarChart2,
+  PanelsTopLeft,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 
 const navItems = [
@@ -18,6 +20,13 @@ const navItems = [
     label: 'Dashboard',
     icon: LayoutDashboard,
     active: true,
+  },
+  {
+    to: '/kelola-beranda',
+    label: 'Kelola Beranda',
+    icon: PanelsTopLeft,
+    active: true,
+    adminOnly: true,
   },
   {
     to: '/inventaris',
@@ -65,21 +74,12 @@ const navItems = [
 
 
 export default function Sidebar() {
+  const { isAdmin } = useAuth();
 
   return (
 
     <aside
-      className="
-        hidden
-        md:flex
-        md:w-64
-        md:flex-col
-        shrink-0
-        border-r
-        border-slate-200
-        bg-white
-        text-slate-600
-      "
+      className="hidden shrink-0 border-r border-emerald-950/20 bg-gradient-to-b from-[#174c43] to-[#123a39] text-emerald-50 md:flex md:w-64 md:flex-col"
     >
 
 
@@ -92,7 +92,7 @@ export default function Sidebar() {
           items-center
           gap-3
           border-b
-          border-slate-100
+          border-white/10
           px-5
         "
       >
@@ -105,7 +105,7 @@ export default function Sidebar() {
             w-9
             rounded-lg
             border
-            border-slate-200
+            border-white/60
             bg-white
             object-cover
             p-1
@@ -120,7 +120,7 @@ export default function Sidebar() {
               text-sm
               font-bold
               tracking-tight
-              text-slate-900
+              text-white
             "
           >
             Bidang Logistik
@@ -130,7 +130,7 @@ export default function Sidebar() {
           <p
             className="
               text-[11px]
-              text-slate-500
+              text-emerald-100/70
             "
           >
             Mako HW UNIMUS
@@ -159,7 +159,7 @@ export default function Sidebar() {
       >
 
         {
-          navItems.map(
+          navItems.filter((item) => !item.adminOnly || isAdmin).map(
             ({
               to,
               label,
@@ -189,15 +189,15 @@ export default function Sidebar() {
                       isActive
                       ?
                       `
-                      bg-blue-600
+                      bg-emerald-700
                       text-white
                       shadow-sm
                       `
                       :
                       `
-                      text-slate-600
-                      hover:bg-blue-50
-                      hover:text-blue-700
+                      text-emerald-50/80
+                      hover:bg-white/10
+                      hover:text-white
                       `
                     }
                     `
@@ -237,7 +237,7 @@ export default function Sidebar() {
                     py-2.5
                     text-sm
                     font-medium
-                    text-slate-400
+                    text-emerald-100/45
                   "
                 >
 
@@ -262,12 +262,12 @@ export default function Sidebar() {
                   <span
                     className="
                       rounded-full
-                      bg-slate-100
+                      bg-white/10
                       px-1.5
                       py-0.5
                       text-[10px]
                       font-semibold
-                      text-slate-500
+                      text-emerald-50/80
                     "
                   >
                     Segera
@@ -293,11 +293,11 @@ export default function Sidebar() {
       <div
         className="
           border-t
-          border-slate-200
+          border-white/10
           px-4
           py-4
           text-[11px]
-          text-slate-500
+          text-emerald-100/60
         "
       >
         Modul operasional aktif

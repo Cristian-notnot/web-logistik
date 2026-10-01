@@ -3,7 +3,8 @@ import DashboardLayout from '../components/Layout/DashboardLayout';
 import Button from '../components/UI/Button';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
-import { Camera } from 'lucide-react';
+import { Camera, FileSpreadsheet } from 'lucide-react';
+import { exportToExcel } from '../utils/exportToExcel';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -218,6 +219,7 @@ export default function OperasionalModule({ type }) {
   const [master, setMaster] = useState({});
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(null);
   const [activeTab, setActiveTab] = useState('barang');
     const [editItem, setEditItem] = useState(null); //
@@ -233,11 +235,17 @@ export default function OperasionalModule({ type }) {
     load();
   }, [type]);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(''), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
   const load = async () => {
     try {
       setError('');
       const moduleRes = await api.get(`/operasional/${type}`);
-      if (type === 'unboxing') {
+      if (Array.isArray(moduleRes.data)) {
         setData({ data: moduleRes.data });
       } else {
         setData(moduleRes.data || {});
@@ -269,8 +277,8 @@ export default function OperasionalModule({ type }) {
     try {
       setError('');
       const res = await api.put(`/operasional/peminjaman/${id}/approve`);
-      setNotice(res.data.message);
-      load();
+      await load();
+      setNotice(res.data.message || 'Peminjaman berhasil disetujui.');
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal menyetujui peminjaman.');
     }
@@ -280,8 +288,8 @@ export default function OperasionalModule({ type }) {
     try {
       setError('');
       const res = await api.put(`/operasional/peminjaman/${id}/return`);
-      setNotice(res.data.message);
-      load();
+      await load();
+      setNotice(res.data.message || 'Pengembalian berhasil diproses.');
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memproses pengembalian.');
     }
@@ -289,6 +297,8 @@ export default function OperasionalModule({ type }) {
 
   const handleFieldChange = (e) => {
     setFormValues((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setError('');
+    setNotice('');
   };
 
   const calculatedTotal = useMemo(() => {
@@ -322,26 +332,43 @@ export default function OperasionalModule({ type }) {
   }, [formValues, data.barang, type, open, config.forms]);
   
       const handleSubmit = async (e, path) => {
-    e.preventDefault();
-    setError('');
-    setNotice('');
-    const formData = new FormData(e.target);
+        e.preventDefault();
+        setError('');
+        setNotice('');
 
-    if (path === '/operasional/sewa/peminjaman') {
-      formData.set('total_harga', calculatedTotal.toString());
-    }
+        const formElement = e.currentTarget;
+        const formData = new FormData(formElement);
+        const formConfig = config.forms.find((form) => form.path === path);
+        const hasFile = formConfig?.fields.some(
+          ([, , fieldType]) => fieldType === 'file'
+        );
+        const payload = hasFile
+          ? formData
+          : Object.fromEntries(formData.entries());
 
-    try {
-      const res = await api.post(path, formData);
-      setNotice(res.data.message);
-      setOpen(null);
-      setEditItem(null);
-      e.target.reset();
-      load();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Gagal menyimpan data.');
-    }
-  };
+        if (path === '/operasional/sewa/peminjaman') {
+          if (payload instanceof FormData) {
+            payload.set('total_harga', calculatedTotal.toString());
+          } else {
+            payload.total_harga = calculatedTotal.toString();
+          }
+        }
+
+        setSaving(true);
+        try {
+          const res = await api.post(path, payload);
+          formElement.reset();
+          setFormValues(initialFormValues);
+          setOpen(null);
+          setEditItem(null);
+          await load();
+          setNotice(res.data?.message || 'Data berhasil disimpan.');
+        } catch (err) {
+          setError(err.response?.data?.message || 'Gagal menyimpan data.');
+        } finally {
+          setSaving(false);
+        }
+      };
 
   const handleEditSubmit = async (e, id) => {
     e.preventDefault();
@@ -352,9 +379,9 @@ export default function OperasionalModule({ type }) {
 
     try {
       const res = await api.put(`/operasional/sewa/barang/${id}`, body);
-      setNotice(res.data.message);
       setEditItem(null);
-      load();
+      await load();
+      setNotice(res.data.message || 'Data barang berhasil diperbarui.');
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memperbarui data barang.');
     }
@@ -388,16 +415,26 @@ export default function OperasionalModule({ type }) {
   };
 
   const isUserAdmin = isAdmin || user?.role === 'admin_logistik';
+  const handleExport = (section, rows) => {
+    const formattedRows = rows.map((row, index) => ({
+      No: index + 1,
+      ...Object.fromEntries(
+        section.columns.map((column) => [label(column), row[column] ?? '—'])
+      ),
+    }));
+    const reportName = type === 'piket' ? 'Piket_Mako' : 'Unboxing_Mako';
+    exportToExcel(formattedRows, `Laporan_${reportName}_${section.key}`);
+  };
 
   return (
     <DashboardLayout title={config.title} subtitle={config.subtitle}>
       {error && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
         </div>
       )}
       {notice && (
-        <div className="mb-4 rounded-xl border border-teal-200 bg-teal-50 p-3 text-sm text-teal-700">
+        <div role="status" aria-live="polite" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
           {notice}
         </div>
       )}
@@ -531,7 +568,9 @@ export default function OperasionalModule({ type }) {
                 </div>
               )}
 
-            <Button type="submit">Simpan Data</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Menyimpan...' : 'Simpan Data'}
+            </Button>
           </form>
         </div>
       )}
@@ -543,12 +582,23 @@ export default function OperasionalModule({ type }) {
           return (
             <div
               key={section.key}
-              className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+              className="overflow-hidden rounded-xl border border-emerald-100 bg-white shadow-[0_10px_30px_rgba(21,78,66,0.07)]"
             >
-              <div className="border-b border-gray-100 px-5 py-3">
-                <h3 className="text-base font-semibold text-gray-800">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-amber-50 px-5 py-3">
+                <h3 className="text-base font-semibold text-emerald-950">
                   {section.title}
                 </h3>
+                {(type === 'piket' || type === 'unboxing') && (
+                  <button
+                    type="button"
+                    onClick={() => handleExport(section, rows)}
+                    disabled={rows.length === 0}
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    <FileSpreadsheet size={16} />
+                    Ekspor Excel
+                  </button>
+                )}
               </div>
 
               {rows.length === 0 ? (
@@ -556,7 +606,7 @@ export default function OperasionalModule({ type }) {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                    <thead className="bg-emerald-800 text-left text-xs uppercase text-emerald-50">
                       <tr>
                         {section.columns.map((column) => (
                           <th key={column} className="px-4 py-3">
@@ -572,7 +622,7 @@ export default function OperasionalModule({ type }) {
                                           {rows.map((row, index) => (
                       <tr
                         key={row.id ?? index}
-                        className="border-t border-gray-100 hover:bg-gray-50"
+                        className="border-t border-emerald-50 odd:bg-white even:bg-emerald-50/50 hover:bg-amber-50"
                       >
                         {section.columns.map((column) => (
                           <td key={column} className="px-4 py-3 text-gray-700">
