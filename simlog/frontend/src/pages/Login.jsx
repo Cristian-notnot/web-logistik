@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -15,6 +15,29 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { fallbackBidangImages, fallbackBkmImages, fallbackUnitImage } from '../constants/homepageImages';
+
+const imageSrc = (value) => {
+  if (!value) return '';
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  return value.startsWith('/') ? value : `/${value}`;
+};
+
+const imageStyle = (image) => {
+  const defaultY = image?.image_position === 'top' ? 0 : image?.image_position === 'bottom' ? 100 : 50;
+  const imageY = image?.image_y === undefined || image?.image_y === null
+    ? defaultY
+    : Number(image.image_y) === 50 && image.image_position === 'top'
+      ? 0
+      : Number(image.image_y) === 50 && image.image_position === 'bottom'
+        ? 100
+        : image.image_y;
+  return {
+    objectPosition: `${image?.image_x ?? 50}% ${imageY}%`,
+    transform: `scale(${image?.image_zoom ?? 1})`,
+    transformOrigin: 'center',
+  };
+};
 
 export default function Login() {
   const { login, loading, error } = useAuth();
@@ -26,6 +49,50 @@ export default function Login() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
   const [homepageData, setHomepageData] = useState(null);
+  const [selectedNews, setSelectedNews] = useState(null);
+  const newsTrackRef = useRef(null);
+  const newsDragRef = useRef(null);
+
+  function scrollNews(direction) {
+    newsTrackRef.current?.scrollBy({
+      left: direction * newsTrackRef.current.clientWidth * 0.82,
+      behavior: 'smooth',
+    });
+  }
+
+  function startNewsDrag(event) {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    newsDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      scrollLeft: event.currentTarget.scrollLeft,
+      moved: false,
+    };
+  }
+
+  function moveNewsDrag(event) {
+    const drag = newsDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const distance = event.clientX - drag.startX;
+    if (Math.abs(distance) > 5) drag.moved = true;
+    event.currentTarget.scrollLeft = drag.scrollLeft - distance;
+  }
+
+  function endNewsDrag(event) {
+    const drag = newsDragRef.current;
+    if (drag?.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function preventNewsClickAfterDrag(event) {
+    if (!newsDragRef.current?.moved) return;
+    event.preventDefault();
+    event.stopPropagation();
+    newsDragRef.current = null;
+  }
 
   const fallbackSlides = [
     {
@@ -36,7 +103,7 @@ export default function Login() {
         'HW UNIMUS menjadi ruang pengembangan kepanduan, kepemimpinan, pengabdian, serta keterampilan mahasiswa dalam lingkungan yang aktif, disiplin, dan terarah.'
     },
     {
-      image: 'pelantikan hw unimus.jpg',
+      image: fallbackBidangImages[0],
       label: 'Hizbul Wathan UNIMUS',
       title: 'Bertumbuh bersama dalam proses kaderisasi',
       description:
@@ -64,35 +131,35 @@ export default function Login() {
     {
       number: '02',
       title: 'Bidang Kominfo',
-      image: 'DIKLAT ANGGOTA.jpg',
+      image: fallbackBidangImages[1],
       description:
         'Mengelola informasi, publikasi, dokumentasi, media, dan komunikasi HW UNIMUS.'
     },
     {
       number: '03',
       title: 'Bidang AIK',
-      image: 'BPH 2025-2026.jpeg',
+      image: fallbackBidangImages[2],
       description:
         'Menguatkan nilai Al-Islam dan Kemuhammadiyahan dalam kegiatan serta kehidupan kader.'
     },
     {
       number: '04',
       title: 'Bidang Kepanduan',
-      image: 'DIKLAT ANGGOTA.jpg',
+      image: fallbackBidangImages[3],
       description:
         'Mengembangkan keterampilan kepanduan, kemampuan lapangan, kedisiplinan, dan kerja sama.'
     },
     {
       number: '05',
       title: 'Bidang Logistik',
-      image: 'pelantikan hw unimus.jpg',
+      image: fallbackBidangImages[4],
       description:
         'Mengelola inventaris, sarana, pengadaan, ruang, serta kebutuhan operasional organisasi.'
     },
     {
       number: '06',
       title: 'Bidang Pengkaderan',
-      image: 'BPH 2025-2026.jpeg',
+      image: fallbackBidangImages[5],
       description:
         'Mengelola penerimaan, pembinaan, pendidikan, dan pengembangan anggota HW UNIMUS.'
     }
@@ -102,22 +169,36 @@ export default function Login() {
   const fallbackBkm = [
     {
       nama: 'BKM Kesenian',
-      image_url: 'DIKLAT ANGGOTA.jpg',
+      image_url: fallbackBkmImages[0],
       deskripsi: 'Ruang pengembangan minat, bakat, kreativitas, dan kegiatan kesenian anggota HW UNIMUS.'
     },
     {
       nama: 'BKM Kewirausahaan',
-      image_url: 'BPH 2025-2026.jpeg',
+      image_url: fallbackBkmImages[1],
       deskripsi: 'Mengembangkan kemampuan kewirausahaan dan kemandirian anggota melalui kegiatan produktif.'
     }
   ];
   const bkm = homepageData?.bkm?.length ? homepageData.bkm : fallbackBkm;
+  const fallbackBph = [
+    { jabatan: 'ketua_kafilah', nama: '', image_url: 'BPH 2025-2026.jpeg' },
+    { jabatan: 'sekretaris_kafilah', nama: '', image_url: 'BPH 2025-2026.jpeg' },
+    { jabatan: 'bendahara_kafilah', nama: '', image_url: 'BPH 2025-2026.jpeg' },
+  ];
+  const bph = homepageData?.bph?.length ? homepageData.bph : fallbackBph;
+  const bphTitles = {
+    ketua_kafilah: 'Ketua Kafilah',
+    sekretaris_kafilah: 'Sekretaris Kafilah',
+    bendahara_kafilah: 'Bendahara Kafilah',
+  };
+  const unitCards = [...bidang, ...bkm]
+    .sort((first, second) => Number(first.urutan || 0) - Number(second.urutan || 0));
   const fallbackKegiatan = [
     { image_url: 'DIKLAT ANGGOTA.jpg', title: 'Belajar melalui pengalaman dan kegiatan lapangan' },
     { image_url: 'pelantikan hw unimus.jpg', title: 'Kegiatan HW UNIMUS' },
     { image_url: 'BPH 2025-2026.jpeg', title: 'Aktivitas anggota HW UNIMUS' }
   ];
   const kegiatan = homepageData?.kegiatan?.length ? homepageData.kegiatan.slice(0, 3) : fallbackKegiatan;
+  const berita = homepageData?.berita || [];
   const about = homepageData?.about || {
     label: 'Tentang HW UNIMUS',
     title: 'Tempat tumbuh bagi kader yang aktif dan berkarakter',
@@ -247,6 +328,14 @@ export default function Login() {
 
             <button
               type="button"
+              onClick={() => scrollToSection('berita')}
+              className="text-[13px] font-medium text-slate-600 transition hover:text-emerald-700"
+            >
+              Berita
+            </button>
+
+            <button
+              type="button"
               onClick={() => scrollToSection('logistik')}
               className="text-[13px] font-medium text-slate-600 transition hover:text-emerald-700"
             >
@@ -316,6 +405,14 @@ export default function Login() {
 
               <button
                 type="button"
+                onClick={() => scrollToSection('berita')}
+                className="text-left text-sm font-medium"
+              >
+                Berita
+              </button>
+
+              <button
+                type="button"
                 onClick={() => scrollToSection('logistik')}
                 className="text-left text-sm font-medium"
               >
@@ -354,9 +451,9 @@ export default function Login() {
             {heroSlides.map((slide, index) => (
               <img
                 key={slide.id || slide.image_url || slide.image || index}
-                src={slide.image_url || slide.image || fallbackSlides[index % fallbackSlides.length].image}
+                src={imageSrc(slide.image_url || slide.image || fallbackSlides[index % fallbackSlides.length].image)}
                 alt={slide.title}
-                style={{ objectPosition: slide.image_position === 'top' ? 'top' : slide.image_position === 'bottom' ? 'bottom' : 'center' }}
+                style={imageStyle(slide)}
                 className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${
   activeSlide === index ? 'opacity-100' : 'opacity-0'
 }`}
@@ -471,53 +568,173 @@ export default function Login() {
           </div>
         </section>
 
+        <section id="berita" className="bg-[#f4f6f3] py-16 lg:py-20">
+          <div className="mx-auto max-w-[1280px] px-6 sm:px-8 lg:px-10">
+            <div className="mb-8 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-emerald-700">
+                  Informasi Terbaru
+                </p>
+                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.025em] text-slate-900 sm:text-4xl">
+                  Berita HW UNIMUS
+                </h2>
+              </div>
+              {berita.length > 1 && (
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => scrollNews(-1)}
+                    aria-label="Berita sebelumnya"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 transition hover:border-emerald-700 hover:text-emerald-700"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollNews(1)}
+                    aria-label="Berita berikutnya"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 transition hover:border-emerald-700 hover:text-emerald-700"
+                  >
+                    <ArrowRight size={18} />
+                  </button>
+                </div>
+              )}
+            </div>
+            {berita.length ? (
+              <div
+                ref={newsTrackRef}
+                onPointerDown={startNewsDrag}
+                onPointerMove={moveNewsDrag}
+                onPointerUp={endNewsDrag}
+                onPointerCancel={endNewsDrag}
+                onClickCapture={preventNewsClickAfterDrag}
+                className="flex snap-x snap-mandatory cursor-grab select-none gap-6 overflow-x-auto scroll-smooth pb-4 active:cursor-grabbing"
+                aria-label="Geser untuk melihat berita lainnya"
+              >
+                {berita.map((item) => (
+                  <article
+                    key={item.id}
+                    className="grid min-h-[340px] w-[88%] shrink-0 snap-start overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:w-[78%] lg:min-h-[390px] lg:w-[82%] lg:grid-cols-[0.9fr_1.1fr]"
+                  >
+                    <div className="relative min-h-56 overflow-hidden bg-slate-100 lg:min-h-full">
+                      {item.image_url && (
+                        <img
+                          src={imageSrc(item.image_url)}
+                          alt={item.title}
+                          style={imageStyle(item)}
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="flex flex-col items-start p-6 sm:p-8 lg:justify-center lg:p-10">
+                      <span className="inline-flex rounded bg-emerald-700 px-2.5 py-1.5 text-[10px] font-semibold tracking-wide text-white">
+                        {item.kategori || 'PRESS RELEASE'}
+                      </span>
+                      <h3 className="mt-4 text-2xl font-semibold leading-snug text-slate-900 sm:text-3xl">
+                        {item.title}
+                      </h3>
+                      <p className="mt-2 text-sm text-slate-500">
+                        {item.created_at
+                          ? new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                          : ''}
+                      </p>
+                      <p className="mt-4 line-clamp-4 text-base leading-7 text-slate-600">
+                        {item.ringkasan || item.isi || item.title}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedNews(item)}
+                        className="mt-5 text-sm font-semibold text-emerald-800 hover:text-emerald-600"
+                      >
+                        Baca Berita
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">Belum ada berita yang dipublikasikan.</p>
+            )}
+          </div>
+        </section>
+
         <section
           id="bidang"
           className="bg-[#f4f6f3] py-20 lg:py-24"
         >
           <div className="mx-auto max-w-[1280px] px-6 sm:px-8 lg:px-10">
-            <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
+            <div className="mb-12">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-emerald-700">
-                  Struktur Bidang
+                  Badan Pengurus Harian
                 </p>
 
-                <h2 className="mt-5 max-w-lg text-3xl font-semibold leading-[1.12] tracking-[-0.025em] text-slate-900 sm:text-4xl lg:text-[46px]">
-                  Bidang yang menjalankan roda organisasi
+                <h2 className="mt-4 text-3xl font-semibold leading-[1.12] tracking-[-0.025em] text-slate-900 sm:text-4xl lg:text-[46px]">
+                  BPH (Badan Pengurus Harian)
                 </h2>
               </div>
 
-              <p className="max-w-xl text-[15px] leading-8 text-slate-600 lg:justify-self-end">
-                Enam bidang menjalankan fungsi organisasi, komunikasi,
-                pembinaan nilai, kepanduan, logistik, dan pengkaderan.
-                Masing-masing bidang bekerja sesuai perannya dan tetap
-                terhubung dalam satu struktur HW UNIMUS.
+              <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {bph.map((item) => (
+                  <article
+                    key={item.id || item.jabatan}
+                    className="group relative min-h-[380px] overflow-hidden rounded-[22px] bg-slate-900"
+                  >
+                    <img
+                      src={imageSrc(item.image_url || 'BPH 2025-2026.jpeg')}
+                      alt={item.nama || bphTitles[item.jabatan] || 'Pengurus BPH'}
+                      style={imageStyle(item)}
+                      className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
+                    <div className="absolute inset-x-0 bottom-0 p-6">
+                      <h3 className="text-xl font-semibold text-white">
+                        {item.nama || bphTitles[item.jabatan]}
+                      </h3>
+                      {item.nama && (
+                        <p className="mt-2 text-sm font-medium text-emerald-200">
+                          {bphTitles[item.jabatan]}
+                        </p>
+                      )}
+                      {item.deskripsi && (
+                        <p className="mt-3 text-[13px] leading-6 text-white/65">
+                          {item.deskripsi}
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200 pt-12">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-emerald-700">
+                Struktur Organisasi
+              </p>
+              <h2 className="mt-4 text-3xl font-semibold leading-[1.12] tracking-[-0.025em] text-slate-900 sm:text-4xl lg:text-[46px]">
+                Bidang dan Bina Karya Mandiri
+              </h2>
+              <p className="mt-5 max-w-3xl text-[15px] leading-8 text-slate-600">
+                Bidang dan Bina Karya Mandiri (BKM) bergerak bersama dalam satu struktur untuk mendukung program dan kegiatan HW UNIMUS.
               </p>
             </div>
 
-            <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {bidang.map((item, index) => (
+            <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {unitCards.map((item) => (
                 <article
-                  key={item.id || item.number || item.nama}
+                  key={item.id || item.nama}
                   className="group relative min-h-[360px] overflow-hidden rounded-[22px] bg-slate-900"
                 >
                   <img
-                    src={item.image_url || item.image || fallbackBidang[index % fallbackBidang.length].image}
+                    src={imageSrc(item.image_url || item.image || fallbackUnitImage(item.nama || item.title, item.jenis || 'bidang'))}
                     alt={item.nama || item.title}
+                    style={imageStyle(item)}
                     className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
                   />
 
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
 
                   <div className="absolute inset-x-0 bottom-0 p-6">
-                    <div className="mb-5 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold tracking-[0.2em] text-emerald-300">
-                        {String(item.urutan ?? index + 1).padStart(2, '0')}
-                      </span>
-
-                      <span className="h-px w-10 bg-white/35" />
-                    </div>
-
                     <h3 className="text-xl font-semibold text-white">
                       {item.nama || item.title}
                     </h3>
@@ -528,46 +745,6 @@ export default function Login() {
                   </div>
                 </article>
               ))}
-            </div>
-
-            <div className="mt-20">
-              <div className="mb-8">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-emerald-700">
-                  Bina Karya Mandiri
-                </p>
-
-                <h3 className="mt-4 text-3xl font-semibold tracking-[-0.025em] text-slate-900">
-                  Ruang pengembangan minat dan kemandirian
-                </h3>
-              </div>
-
-              <div className="grid gap-5 lg:grid-cols-2">
-                {bkm.map((item, index) => (
-                  <article key={item.id || item.nama} className="group relative min-h-[430px] overflow-hidden rounded-[24px] bg-slate-900">
-                    <img
-                      src={item.image_url || item.image || fallbackBkm[index % fallbackBkm.length].image_url}
-                      alt={item.nama || item.title}
-                      className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
-                    />
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-
-                    <div className="absolute inset-x-0 bottom-0 p-7 sm:p-8">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                        Bina Karya Mandiri
-                      </p>
-
-                      <h3 className="mt-3 text-2xl font-semibold text-white">
-                        {item.nama || item.title}
-                      </h3>
-
-                      <p className="mt-3 max-w-lg text-sm leading-7 text-white/65">
-                        {item.deskripsi || item.description}
-                      </p>
-                    </div>
-                  </article>
-                ))}
-              </div>
             </div>
           </div>
         </section>
@@ -599,8 +776,9 @@ export default function Login() {
               {kegiatan[0] && (
                 <div className="group relative min-h-[500px] overflow-hidden rounded-[24px] bg-slate-100">
                   <img
-                    src={kegiatan[0].image_url || kegiatan[0].image || fallbackKegiatan[0].image_url}
+                    src={imageSrc(kegiatan[0].image_url || kegiatan[0].image || fallbackKegiatan[0].image_url)}
                     alt={kegiatan[0].title || 'Kegiatan HW UNIMUS'}
+                    style={imageStyle(kegiatan[0])}
                     className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.02]"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
@@ -616,8 +794,9 @@ export default function Login() {
                 {kegiatan.slice(1, 3).map((item, index) => (
                   <div key={item.id || item.title} className="relative min-h-[238px] overflow-hidden rounded-[24px] bg-slate-100">
                     <img
-                      src={item.image_url || item.image || fallbackKegiatan[(index + 1) % fallbackKegiatan.length].image_url}
+                      src={imageSrc(item.image_url || item.image || fallbackKegiatan[(index + 1) % fallbackKegiatan.length].image_url)}
                       alt={item.title || 'Kegiatan HW UNIMUS'}
+                      style={imageStyle(item)}
                       className="absolute inset-0 h-full w-full object-cover"
                     />
                   </div>
@@ -716,6 +895,33 @@ export default function Login() {
         </section>
       </main>
 
+      {selectedNews && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="news-title">
+          <article className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white">
+            <button
+              type="button"
+              onClick={() => setSelectedNews(null)}
+              aria-label="Tutup berita"
+              className="absolute right-4 top-4 z-10 rounded-full bg-white/90 p-2 text-slate-700 shadow"
+            >
+              <X size={18} />
+            </button>
+            {selectedNews.image_url && (
+              <img src={imageSrc(selectedNews.image_url)} alt={selectedNews.title} style={imageStyle(selectedNews)} className="max-h-[360px] w-full object-cover" />
+            )}
+            <div className="p-6 sm:p-8">
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">{selectedNews.kategori || 'PRESS RELEASE'}</p>
+              <h2 id="news-title" className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">{selectedNews.title}</h2>
+              <p className="mt-2 text-sm text-slate-500">
+                {selectedNews.created_at && new Date(selectedNews.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+              {selectedNews.ringkasan && <p className="mt-5 font-medium leading-7 text-slate-700">{selectedNews.ringkasan}</p>}
+              <p className="mt-4 whitespace-pre-line leading-7 text-slate-600">{selectedNews.isi || selectedNews.ringkasan}</p>
+            </div>
+          </article>
+        </div>
+      )}
+
       <footer
         id="kontak"
         className="bg-[#082f29] text-white"
@@ -774,6 +980,14 @@ export default function Login() {
                 className="w-fit transition hover:text-white"
               >
                 Kegiatan
+              </button>
+
+              <button
+                type="button"
+                onClick={() => scrollToSection('berita')}
+                className="w-fit transition hover:text-white"
+              >
+                Berita
               </button>
 
               <button

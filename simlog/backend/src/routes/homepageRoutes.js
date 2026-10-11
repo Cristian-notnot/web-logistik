@@ -61,10 +61,18 @@ adminRouter.post('/bkm', withKind('bkm'), imageUpload.single('image'), controlle
 adminRouter.put('/bkm/:id', withKind('bkm'), imageUpload.single('image'), controller.updateUnit);
 adminRouter.delete('/bkm/:id', withKind('bkm'), controller.deleteUnit);
 
+adminRouter.get('/bph', controller.listBph);
+adminRouter.put('/bph/:id', imageUpload.single('image'), controller.updateBph);
+
 adminRouter.get('/kegiatan', controller.listActivities);
 adminRouter.post('/kegiatan', imageUpload.single('image'), controller.createActivity);
 adminRouter.put('/kegiatan/:id', imageUpload.single('image'), controller.updateActivity);
 adminRouter.delete('/kegiatan/:id', controller.deleteActivity);
+
+adminRouter.get('/berita', controller.listNews);
+adminRouter.post('/berita', imageUpload.single('image'), controller.createNews);
+adminRouter.put('/berita/:id', imageUpload.single('image'), controller.updateNews);
+adminRouter.delete('/berita/:id', controller.deleteNews);
 
 router.use('/admin/homepage', adminRouter);
 

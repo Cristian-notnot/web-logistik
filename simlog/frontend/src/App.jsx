@@ -7,6 +7,7 @@ import OperasionalModule from './pages/OperasionalModule';
 import Profile from './pages/Profile';
 import Reports from './pages/Reports';
 import HomepageManager from './pages/HomepageManager';
+import PiketQRForm from './pages/PiketQRForm';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
@@ -19,6 +20,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/form-piket" element={<PiketQRForm />} />
 
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/kelola-beranda" element={<ProtectedRoute><AdminRoute><HomepageManager /></AdminRoute></ProtectedRoute>} />

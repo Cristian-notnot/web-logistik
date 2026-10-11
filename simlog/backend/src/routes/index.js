@@ -5,6 +5,7 @@ router.use('/auth', require('./authRoutes'));
 router.use('/inventaris', require('./inventarisRoutes'));
 router.use('/master', require('./masterDataRoutes'));
 router.use('/upload', require('./uploadRoutes'));
+router.use('/public/piket', require('./publicPiketRoutes'));
 router.use('/operasional', require('./operasionalRoutes'));
 router.use(require('./homepageRoutes'));
 

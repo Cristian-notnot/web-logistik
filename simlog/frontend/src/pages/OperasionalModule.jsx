@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { Camera, FileSpreadsheet } from 'lucide-react';
 import { exportToExcel } from '../utils/exportToExcel';
+import QRCode from 'qrcode';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -40,22 +41,22 @@ const configs = {
       {
         key: 'jadwal',
         title: 'Jadwal Piket',
-        columns: ['minggu_mulai', 'minggu_selesai', 'nama_bidang'],
+        columns: ['nama_bidang', 'jadwal_periode', 'minggu_mulai', 'minggu_selesai', 'periode_valid'],
       },
       {
         key: 'pelaksanaan',
         title: 'Pelaksanaan Terbaru',
-        columns: ['tanggal', 'nama_bidang', 'status', 'nama_pengisi', 'catatan'],
+        columns: ['created_at', 'nama_bidang', 'nama_pengisi', 'status', 'foto_url', 'catatan'],
       },
     ],
     forms: [
       {
-        title: 'Buat Jadwal',
+        title: 'Tambah Jadwal Piket',
         path: '/operasional/piket/jadwal',
         fields: [
           ['bidang_id', 'Bidang', 'select', 'bidang'],
-          ['minggu_mulai', 'Mulai', 'date'],
-          ['minggu_selesai', 'Selesai', 'date'],
+          ['minggu_mulai', 'Tanggal mulai piket', 'date'],
+          ['minggu_selesai', 'Tanggal akhir piket', 'date'],
         ],
       },
       {
@@ -209,6 +210,8 @@ const initialFormValues = {
   jumlah_dipinjam: '1',
   tanggal_mulai: today(),
   tanggal_kembali_rencana: today(),
+  minggu_mulai: today(),
+  minggu_selesai: today(),
 };
 
 export default function OperasionalModule({ type }) {
@@ -224,6 +227,7 @@ export default function OperasionalModule({ type }) {
   const [activeTab, setActiveTab] = useState('barang');
     const [editItem, setEditItem] = useState(null); //
   const [formValues, setFormValues] = useState(initialFormValues);
+  const [piketQr, setPiketQr] = useState('');
 
   useEffect(() => {
     setOpen(null);
@@ -234,6 +238,19 @@ export default function OperasionalModule({ type }) {
   useEffect(() => {
     load();
   }, [type]);
+
+  useEffect(() => {
+    if (type !== 'piket' || !isAdmin) return;
+    QRCode.toDataURL(`${window.location.origin}/form-piket`, {
+      errorCorrectionLevel: 'H',
+      margin: 2,
+      width: 280,
+      color: { dark: '#064e3b', light: '#ffffff' },
+    }).then(setPiketQr).catch((err) => {
+      console.error('[OperasionalModule] Gagal membuat QR piket:', err);
+      setError('QR piket tidak dapat dibuat.');
+    });
+  }, [type, isAdmin]);
 
   useEffect(() => {
     if (!notice) return;
@@ -342,7 +359,7 @@ export default function OperasionalModule({ type }) {
         const hasFile = formConfig?.fields.some(
           ([, , fieldType]) => fieldType === 'file'
         );
-        const payload = hasFile
+        let payload = hasFile
           ? formData
           : Object.fromEntries(formData.entries());
 
@@ -391,7 +408,9 @@ export default function OperasionalModule({ type }) {
 
   const options = (source) => {
     if (selectStatic[source]) {
-      return selectStatic[source].map((v) => [v, v]);
+      return selectStatic[source].map((v) => (
+        Array.isArray(v) ? v : [v, v]
+      ));
     }
     if (source === 'jadwal') {
       return (data.jadwal || []).map((v) => [
@@ -426,6 +445,35 @@ export default function OperasionalModule({ type }) {
     exportToExcel(formattedRows, `Laporan_${reportName}_${section.key}`);
   };
 
+  const handleViewPiketPhoto = async (url) => {
+    const photoWindow = window.open('', '_blank');
+    if (!photoWindow) {
+      setError('Izinkan pop-up browser untuk membuka foto.');
+      return;
+    }
+    photoWindow.document.write('Memuat foto piket...');
+    try {
+      const { data } = await api.get(url, { responseType: 'blob' });
+      const objectUrl = URL.createObjectURL(data);
+      photoWindow.location.replace(objectUrl);
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch (err) {
+      photoWindow.close();
+      setError(err.response?.data?.message || 'Foto piket tidak dapat dibuka.');
+    }
+  };
+
+  const printPiketQr = () => {
+    if (!piketQr) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      setError('Izinkan pop-up browser untuk mencetak QR.');
+      return;
+    }
+    printWindow.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>QR Dokumentasi Piket</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:32px;color:#064e3b}img{width:280px;height:280px}.url{font-size:12px;overflow-wrap:anywhere}</style></head><body><h1>Dokumentasi Piket HW UNIMUS</h1><p>Pindai QR untuk mengisi laporan piket</p><img src="${piketQr}" alt="QR Form Piket"><p class="url">${window.location.origin}/form-piket</p><script>window.onload=()=>window.print()</script></body></html>`);
+    printWindow.document.close();
+  };
+
   return (
     <DashboardLayout title={config.title} subtitle={config.subtitle}>
       {error && (
@@ -437,6 +485,17 @@ export default function OperasionalModule({ type }) {
         <div role="status" aria-live="polite" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
           {notice}
         </div>
+      )}
+
+      {type === 'piket' && isAdmin && (
+        <section className="mb-6 flex flex-wrap items-center gap-5 rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+          <div>
+            <h3 className="font-semibold text-emerald-950">QR Form Piket</h3>
+            <p className="mt-1 max-w-xl text-sm text-slate-600">Cetak QR ini dan pasang di sekretariat. QR membuka formulir publik tanpa membagikan akses admin.</p>
+            <button type="button" onClick={printPiketQr} disabled={!piketQr} className="mt-3 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:bg-slate-400">Cetak QR</button>
+          </div>
+          {piketQr && <img src={piketQr} alt="QR Form Piket" className="h-36 w-36 border border-slate-200 p-1" />}
+        </section>
       )}
 
       {type === 'sewa' && (
@@ -474,6 +533,11 @@ export default function OperasionalModule({ type }) {
 
       <div className="mb-6 flex flex-wrap gap-2">
         {config.forms.map((form, index) => {
+          if (
+            type === 'piket' &&
+              ['/operasional/piket/pelaksanaan', '/operasional/piket/jadwal'].includes(form.path) &&
+            !isUserAdmin
+          ) return null;
           if (type === 'sewa') {
             if (activeTab === 'barang' && form.path !== '/operasional/sewa/barang')
               return null;
@@ -551,7 +615,11 @@ export default function OperasionalModule({ type }) {
                         : ''
                     }
                     onChange={typeField !== 'file' ? handleFieldChange : undefined}
-                    min={typeField === 'number' ? '1' : undefined}
+                    min={typeField === 'number'
+                      ? '1'
+                      : typeField === 'date' && name === 'minggu_selesai'
+                      ? formValues.minggu_mulai || today()
+                      : undefined}
                     required={typeField !== 'file'}
                     className="w-full rounded-xl border border-gray-200 p-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
                   />
@@ -579,15 +647,118 @@ export default function OperasionalModule({ type }) {
         {config.sections.map((section) => {
           if (type === 'sewa' && section.key !== activeTab) return null;
           const rows = Array.isArray(data[section.key]) ? data[section.key] : [];
+          const renderRow = (row, index) => (
+            <tr
+              key={row.id ?? index}
+              className="border-t border-emerald-50 odd:bg-white even:bg-emerald-50/50 hover:bg-amber-50"
+            >
+              {section.columns.map((column) => (
+                <td key={column} className="px-4 py-3 text-gray-700">
+                  {column === 'foto_url' && row[column] ? (
+                    type === 'piket' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleViewPiketPhoto(row[column])}
+                        className="inline-flex items-center gap-1 text-teal-600 hover:underline"
+                      >
+                        <Camera size={14} /> Lihat
+                      </button>
+                    ) : (
+                      <a
+                        href={row[column]}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-teal-600 hover:underline"
+                      >
+                        <Camera size={14} /> Lihat
+                      </a>
+                    )
+                  ) : column === 'created_at' && row[column] ? (
+                    (() => {
+                      const [date, time] = String(row[column]).split(' ');
+                      const [year, month, day] = date.split('-').map(Number);
+                      return `${new Date(year, month - 1, day).toLocaleDateString('id-ID')} ${time?.slice(0, 5) || ''}`;
+                    })()
+                  ) : column === 'jadwal_periode' ? (
+                    row[column] || '-'
+                  ) : column === 'periode_valid' ? (
+                    Number(row[column])
+                      ? <span className="font-semibold text-emerald-700">Valid</span>
+                      : <span className="font-semibold text-amber-700">Periksa periode</span>
+                  ) : column.includes('tanggal') ||
+                    column.includes('minggu') ? (
+                    row[column]
+                      ? new Date(row[column]).toLocaleDateString('id-ID')
+                      : '-'
+                  ) : (
+                    row[column]?.toString() || '-'
+                  )}
+                </td>
+              ))}
+              {type === 'sewa' && isUserAdmin && (
+                <td className="flex gap-2 px-4 py-3">
+                  {section.key === 'barang' && (
+                    <button
+                      type="button"
+                      onClick={() => setEditItem(row)}
+                      className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-amber-600"
+                    >
+                      Edit Barang
+                    </button>
+                  )}
+                  {section.key === 'peminjaman' && (
+                    <>
+                      {row.status === 'Menunggu Persetujuan' && (
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(row.id)}
+                          className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-teal-700"
+                        >
+                          Setujui
+                        </button>
+                      )}
+                      {(row.status === 'Dipinjam' || row.status === 'Terlambat') && (
+                        <button
+                          type="button"
+                          onClick={() => handleReturn(row.id)}
+                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+                        >
+                          Selesai
+                        </button>
+                      )}
+                      {row.status === 'Selesai' && (
+                        <span className="text-xs font-medium text-gray-400">Selesai</span>
+                      )}
+                    </>
+                  )}
+                </td>
+              )}
+            </tr>
+          );
+          const piketGroups = type === 'piket' && section.key === 'pelaksanaan'
+            ? Array.from(rows.reduce((groups, row) => {
+                const groupName = row.nama_bidang || 'Bidang belum diketahui';
+                if (!groups.has(groupName)) groups.set(groupName, []);
+                groups.get(groupName).push(row);
+                return groups;
+              }, new Map()).entries())
+            : [];
           return (
             <div
               key={section.key}
               className="overflow-hidden rounded-xl border border-emerald-100 bg-white shadow-[0_10px_30px_rgba(21,78,66,0.07)]"
             >
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-amber-50 px-5 py-3">
-                <h3 className="text-base font-semibold text-emerald-950">
-                  {section.title}
-                </h3>
+                <div>
+                  <h3 className="text-base font-semibold text-emerald-950">
+                    {section.title}
+                  </h3>
+                  {type === 'piket' && section.key === 'jadwal' && (
+                    <p className="mt-1 text-xs text-slate-600">
+                      Jadwal yang bentrok ditandai “Periksa periode” dan tidak ditampilkan pada form QR.
+                    </p>
+                  )}
+                </div>
                 {(type === 'piket' || type === 'unboxing') && (
                   <button
                     type="button"
@@ -619,73 +790,21 @@ export default function OperasionalModule({ type }) {
                       </tr>
                     </thead>
                     <tbody>
-                                          {rows.map((row, index) => (
-                      <tr
-                        key={row.id ?? index}
-                        className="border-t border-emerald-50 odd:bg-white even:bg-emerald-50/50 hover:bg-amber-50"
-                      >
-                        {section.columns.map((column) => (
-                          <td key={column} className="px-4 py-3 text-gray-700">
-                            {column === 'foto_url' && row[column] ? (
-                              <a
-                                href={row[column]}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-teal-600 hover:underline"
-                              >
-                                <Camera size={14} /> Lihat
-                              </a>
-                            ) : column.includes('tanggal') ||
-                              column.includes('minggu') ? (
-                              row[column]
-                                ? new Date(row[column]).toLocaleDateString('id-ID')
-                                : '-'
-                            ) : (
-                              row[column]?.toString() || '-'
-                            )}
-                          </td>
-                        ))}
-                        {type === 'sewa' && isUserAdmin && (
-                          <td className="px-4 py-3 flex gap-2">
-                            {section.key === 'barang' && (
-                              <button
-                                type="button"
-                                onClick={() => setEditItem(row)}
-                                className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600 transition-colors"
-                              >
-                                Edit Barang
-                              </button>
-                            )}
-
-                            {section.key === 'peminjaman' && (
-                              <>
-                                {row.status === 'Menunggu Persetujuan' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleApprove(row.id)}
-                                    className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 transition-colors"
-                                  >
-                                    Setujui
-                                  </button>
-                                )}
-                                {(row.status === 'Dipinjam' || row.status === 'Terlambat') && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleReturn(row.id)}
-                                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
-                                  >
-                                    Selesai
-                                  </button>
-                                )}
-                                {row.status === 'Selesai' && (
-                                  <span className="text-xs font-medium text-gray-400">Selesai</span>
-                                )}
-                              </>
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    ))}
+                      {piketGroups.length > 0
+                        ? piketGroups.map(([groupName, groupRows]) => (
+                            <React.Fragment key={groupName}>
+                              <tr className="bg-emerald-50">
+                                <td
+                                  colSpan={section.columns.length}
+                                  className="px-4 py-3 font-semibold text-emerald-900"
+                                >
+                                  Saya piket dari {groupName}
+                                </td>
+                              </tr>
+                              {groupRows.map(renderRow)}
+                            </React.Fragment>
+                          ))
+                        : rows.map(renderRow)}
                   </tbody>
                 </table>
               </div>

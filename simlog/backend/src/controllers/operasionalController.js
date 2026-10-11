@@ -112,7 +112,28 @@ exports.listPiket = handler(
     const [jadwal] = await pool.query(`
       SELECT
         j.*,
-        b.nama_bidang
+        b.nama_bidang,
+        CONCAT(
+          'Minggu ke ',
+          CEILING(DAY(j.minggu_mulai) / 7),
+          ' Bulan ',
+          ELT(MONTH(j.minggu_mulai),
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+          ),
+          ' ',
+          YEAR(j.minggu_mulai)
+        ) AS jadwal_periode,
+        (
+          j.minggu_mulai <= j.minggu_selesai
+          AND NOT EXISTS (
+            SELECT 1
+            FROM piket_jadwal conflicting
+            WHERE conflicting.id <> j.id
+              AND conflicting.minggu_mulai <= j.minggu_selesai
+              AND conflicting.minggu_selesai >= j.minggu_mulai
+          )
+        ) AS periode_valid
       FROM piket_jadwal j
       LEFT JOIN bidang b
         ON b.id = j.bidang_id
@@ -124,13 +145,12 @@ exports.listPiket = handler(
     const [pelaksanaan] = await pool.query(`
       SELECT
         p.*,
-        j.bidang_id,
         b.nama_bidang
       FROM piket_pelaksanaan p
       LEFT JOIN piket_jadwal j
         ON j.id = p.jadwal_id
       LEFT JOIN bidang b
-        ON b.id = j.bidang_id
+        ON b.id = COALESCE(p.bidang_id, j.bidang_id)
       ORDER BY
         p.tanggal DESC,
         p.id DESC
@@ -138,7 +158,12 @@ exports.listPiket = handler(
 
     res.json({
       jadwal,
-      pelaksanaan,
+      pelaksanaan: pelaksanaan.map((row) => ({
+        ...row,
+        foto_url: row.foto_url?.startsWith('private-piket:')
+          ? `/operasional/piket/${row.id}/foto`
+          : row.foto_url,
+      })),
     });
   }
 );
@@ -166,16 +191,34 @@ exports.createJadwalPiket = handler(
       'Tanggal selesai'
     );
 
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+    const start = new Date(`${minggu_mulai}T00:00:00Z`);
+    const end = new Date(`${minggu_selesai}T00:00:00Z`);
     if (
-      new Date(minggu_selesai) <
-      new Date(minggu_mulai)
+      !datePattern.test(minggu_mulai) ||
+      !datePattern.test(minggu_selesai) ||
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      start > end
     ) {
       const error = new Error(
-        'Tanggal selesai tidak boleh lebih awal dari tanggal mulai.'
+        'Tanggal akhir jadwal tidak boleh lebih awal dari tanggal mulai.'
       );
-
       error.status = 400;
+      throw error;
+    }
 
+    const [[conflictingSchedule]] = await pool.query(`
+      SELECT id, bidang_id
+      FROM piket_jadwal
+      WHERE minggu_mulai <= ? AND minggu_selesai >= ?
+      LIMIT 1
+    `, [minggu_selesai, minggu_mulai]);
+    if (conflictingSchedule) {
+      const error = new Error(
+        'Rentang tanggal bertabrakan dengan jadwal piket lain. Periksa daftar jadwal yang ada.'
+      );
+      error.status = 409;
       throw error;
     }
 
@@ -261,17 +304,19 @@ exports.createPelaksanaanPiket =
           tanggal,
           status,
           nama_pengisi,
+          bidang_id,
           catatan,
           foto_url,
           sumber_input
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           jadwal_id,
           tanggal,
           status,
           nama_pengisi || null,
+          jadwal.bidang_id,
           catatan || null,
           foto_url,
           'Manual',

@@ -6,6 +6,7 @@ const path = require('path');
 const c = require(
   '../controllers/operasionalController'
 );
+const publicPiketController = require('../controllers/publicPiketController');
 
 const {
   requireAuth,
@@ -136,7 +137,14 @@ router.post(
 
 router.get(
   '/piket',
+  admin,
   c.listPiket
+);
+
+router.get(
+  '/piket/:id/foto',
+  admin,
+  publicPiketController.getPiketPhoto
 );
 
 router.post(
@@ -148,6 +156,7 @@ router.post(
 
 router.post(
   '/piket/pelaksanaan',
+  admin,
   upload.single('foto'),
   c.createPelaksanaanPiket
 );

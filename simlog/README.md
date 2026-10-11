@@ -16,7 +16,7 @@ Modul berikut **sudah punya tabel database & tempat di sidebar**, tapi API dan
 UI-nya belum dibangun — menyusul sesuai urutan yang kamu tentukan:
 
 1. Unboxing & Pendataan Mako
-2. Piket Mako (+ integrasi Google Form → Sheets)
+2. Piket Mako (QR website)
 3. Ruang/Barang Sewa
 4. Pengadaan
 5. Revitalisasi
@@ -67,7 +67,14 @@ simlog/
 1. Nyalakan Laragon (pastikan MySQL aktif).
 2. Buka HeidiSQL / phpMyAdmin bawaan Laragon, lalu jalankan:
    - `backend/database/schema.sql` (membuat database & seluruh tabel)
+   - `backend/database/migration_homepage_cms.sql` (tabel konten beranda, berita, BPH, dan pengaturan zoom/crop foto)
+   - `backend/database/migration_piket_qr.sql` (keamanan foto, anti-duplikasi, dan dukungan form QR)
    - `backend/database/seed.sql` (data awal 8 bidang, ruangan, kategori, admin)
+3. Untuk menolak unggahan yang sama dengan foto piket lama yang file-nya masih tersedia, jalankan dari folder `backend`:
+
+   ```bash
+   node scripts/backfillPiketPhotoHashes.js
+   ```
 
 ### 2. Buat password admin
 
@@ -112,13 +119,36 @@ kapan, apa yang berubah, data sebelum & sesudah dalam format JSON). Ini yang
 nanti jadi dasar untuk Laporan dan feed "Aktivitas Logistik Terbaru" di
 dashboard — dan sudah aktif dari sekarang, bukan fitur yang menyusul.
 
-## Catatan integrasi Piket (Google Form → Sheets)
+## Piket melalui QR website
 
-Tabel `piket_pelaksanaan` sudah menyiapkan kolom `google_form_response_id`
-(unik) supaya proses sinkronisasi dari Google Sheets tidak menulis data
-duplikat. Pola yang direncanakan untuk fase Piket:
+Jalankan atau impor ulang `backend/database/migration_piket_qr.sql` pada
+database yang sama dengan backend. Migration ini menambahkan jadwal dari gambar
+untuk Organisasi (minggu ke-2 Oktober 2026), Kepanduan (ke-3 Oktober), Kominfo
+(ke-4 Oktober), AIK (ke-1 November), Logistik (ke-2 November), BKM Kesenian
+(ke-3 November), BKM Kewirausahaan (ke-4 November), dan Perkaderan
+(ke-1 Desember). Aman diulang; jadwal dengan tanggal mulai yang sama tidak
+digandakan. Migration juga menghapus jadwal Kepanduan 22 Oktober–30 November
+yang keliru bila jadwal Kominfo yang benar tersedia dan belum ada laporan piket
+yang merujuk ke jadwal keliru tersebut. Admin dapat
+mencetak QR dari halaman **Piket Harian**; QR membuka `/form-piket`, tempat
+anggota melihat jadwal per bidang terlebih dahulu; tombol pengisian hanya
+tersedia untuk bidang yang sedang bertugas. Setelah dipilih, anggota mengisi
+nama, foto kamera, dan catatan opsional.
+Riwayat serta foto hanya dapat dilihat lewat halaman piket admin yang meminta
+login. Waktu pencatatan berasal dari server, hash SHA-256 menolak file yang
+identik, dan nama yang sama hanya dapat mengirim satu laporan untuk bidangnya
+per hari. Foto yang dikirim melalui QR disimpan di direktori privat dan dibuka
+melalui endpoint yang memerlukan login admin.
 
-`Google Form → Google Sheets → job sinkronisasi backend (Google Sheets API) → tabel piket_pelaksanaan → ditampilkan di halaman Piket Mako`
-
-Kolom `GOOGLE_SHEETS_ID` dan kredensial service account sudah disiapkan
-tempatnya di `.env.example`, tinggal diisi saat modul ini digarap.
+Akses kamera ponsel memerlukan HTTPS. Form memakai petunjuk capture kamera
+native dengan pilihan kamera depan/belakang; perilakunya bergantung pada browser
+dan perangkat, sehingga browser tetap tidak dapat membuktikan secara mutlak
+bahwa foto diambil saat kegiatan berlangsung. Hash SHA-256 tidak mengenali foto yang sama
+setelah diedit atau dikompres. Nama yang diisi sendiri juga bukan verifikasi
+identitas anggota; gunakan autentikasi akun jika verifikasi identitas diwajibkan.
+Admin dapat melihat seluruh jadwal dan status bentrok pada bagian **Jadwal
+Piket**. Gunakan **Tambah Jadwal Piket** untuk memilih bidang dan tanggal mulai
+sampai tanggal akhir; sistem menolak rentang terbalik atau yang bertabrakan
+dengan jadwal lain.
+Backfill hash foto lama hanya dapat mencakup file foto yang masih ada di folder
+unggahan lokal.
