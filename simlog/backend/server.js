@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
 const path = require('path');
 
 const { testConnection } = require('./src/config/db');
@@ -22,12 +21,6 @@ const uploadDir = path.resolve(
   __dirname,
   process.env.UPLOAD_DIR || 'uploads'
 );
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, {
-    recursive: true,
-  });
-}
 
 // ========================================
 // GLOBAL MIDDLEWARE

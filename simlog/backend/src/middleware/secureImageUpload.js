@@ -82,7 +82,17 @@ function secureImageUpload(destination, { maxFileSize = MAX_FILE_SIZE } = {}) {
               throw error;
             }
 
-            await fs.promises.mkdir(absoluteDestination, { recursive: true });
+            try {
+              await fs.promises.access(absoluteDestination, fs.constants.W_OK);
+            } catch (storageError) {
+              const error = new Error(
+                'Folder upload belum tersedia atau tidak dapat ditulisi. Siapkan foldernya terlebih dahulu atau gunakan penyimpanan file online.'
+              );
+              error.status = 503;
+              error.cause = storageError;
+              throw error;
+            }
+
             const filename = `${crypto.randomUUID()}${image.extension}`;
             const filePath = path.join(absoluteDestination, filename);
             await fs.promises.writeFile(filePath, image.buffer, { flag: 'wx' });

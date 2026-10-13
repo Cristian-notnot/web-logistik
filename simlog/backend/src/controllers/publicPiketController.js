@@ -8,7 +8,6 @@ const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 const requestCounts = new Map();
 const piketUploadDir = path.resolve(__dirname, '..', '..', 'private_uploads', 'piket');
-fs.mkdirSync(piketUploadDir, { recursive: true });
 
 function httpError(status, message) {
   const error = new Error(message);
@@ -151,7 +150,18 @@ exports.submitPiket = async (req, res, next) => {
 
     const filename = `${Date.now()}-${crypto.randomUUID()}${image.extension}`;
     imagePath = path.join(piketUploadDir, filename);
-    await fs.promises.writeFile(imagePath, req.file.buffer, { flag: 'wx' });
+    try {
+      await fs.promises.access(piketUploadDir, fs.constants.W_OK);
+      await fs.promises.writeFile(imagePath, req.file.buffer, { flag: 'wx' });
+    } catch (storageError) {
+      if (storageError.code === 'ENOENT' || storageError.code === 'EACCES' || storageError.code === 'EROFS') {
+        throw httpError(
+          503,
+          'Folder foto piket belum tersedia atau tidak dapat ditulisi. Siapkan foldernya terlebih dahulu atau gunakan penyimpanan file online.'
+        );
+      }
+      throw storageError;
+    }
 
     try {
       const [result] = await pool.query(`

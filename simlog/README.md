@@ -102,6 +102,19 @@ npm run dev
 
 Backend jalan di `http://localhost:5000`. Cek `http://localhost:5000/api/health`.
 
+### Direktori upload
+
+Backend tidak membuat direktori upload secara otomatis. Untuk penggunaan lokal,
+pastikan direktori `backend/uploads`, `backend/uploads/homepage`, dan
+`backend/private_uploads/piket` sudah tersedia dan dapat ditulisi sebelum server
+dijalankan. Jika direktori belum ada, endpoint upload akan mengembalikan error
+503 dengan petunjuk, bukan membuat folder sendiri.
+
+Di Vercel, jangan gunakan disk lokal untuk penyimpanan upload permanen. Siapkan
+object storage (misalnya Cloudflare R2) dan integrasikan upload serta pembacaan
+gambar ke storage tersebut; mematikan `mkdir` saja tidak membuat penyimpanan
+lokal Vercel menjadi persisten.
+
 ### 4. Jalankan frontend
 
 ```bash
