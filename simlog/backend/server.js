@@ -114,10 +114,14 @@ app.use((err, req, res, next) => {
 
 
 
-app.listen(PORT, async () => {
-  console.log(
-    `SIM Logistik HW UNIMUS API berjalan di http://localhost:${PORT}`
-  );
+if (require.main === module) {
+  app.listen(PORT, async () => {
+    console.log(
+      `SIM Logistik HW UNIMUS API berjalan di http://localhost:${PORT}`
+    );
 
-  await testConnection();
-});
+    await testConnection();
+  });
+}
+
+module.exports = app;

@@ -115,6 +115,22 @@ object storage (misalnya Cloudflare R2) dan integrasikan upload serta pembacaan
 gambar ke storage tersebut; mematikan `mkdir` saja tidak membuat penyimpanan
 lokal Vercel menjadi persisten.
 
+### Deploy backend sebagai Vercel Function
+
+Atur **Root Directory** proyek Vercel menjadi `simlog/backend` (atau `backend`
+jika repository Vercel memang sudah berakar di folder `simlog`). Folder tersebut
+berisi `vercel.json`; jangan pilih `frontend` sebagai root untuk deployment
+backend. Konfigurasi mengarahkan semua URL ke Express function di `server.js`,
+yang mengekspor aplikasi tanpa membuka listener lokal pada Vercel. Pada deployment
+online, set `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, dan
+`JWT_SECRET` (minimal 32 karakter) di **Vercel → Project Settings → Environment
+Variables**. Jangan mengandalkan nilai bawaan database lokal seperti `127.0.0.1`.
+Pastikan database dapat diakses dari internet.
+
+Vercel tidak menyediakan disk lokal persisten. Endpoint yang menyimpan foto
+masih memerlukan integrasi object storage seperti Cloudflare R2; deployment
+serverless saja tidak mengaktifkan upload persisten.
+
 ### 4. Jalankan frontend
 
 ```bash
