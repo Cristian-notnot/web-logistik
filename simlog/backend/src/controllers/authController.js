@@ -4,10 +4,8 @@ const { pool } = require('../config/db');
 const { signToken } = require('../utils/jwt');
 const sharp = require('sharp');
 
-const CAPTCHA_TTL_MS = 5 * 60 * 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_FAILURES = 5;
-const captchaChallenges = new Map();
 const loginAttempts = new Map();
 const captchaRequests = new Map();
 
@@ -27,7 +25,6 @@ function pruneExpiredEntries(map, now) {
 
 async function issueCaptcha(req, res) {
   const now = Date.now();
-  pruneExpiredEntries(captchaChallenges, now);
   pruneExpiredEntries(captchaRequests, now);
   const ip = clientKey(req);
   const request = captchaRequests.get(ip);
@@ -53,12 +50,20 @@ async function issueCaptcha(req, res) {
   }).join('');
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="230" height="56" viewBox="0 0 230 56"><rect width="230" height="56" rx="10" fill="#ecfdf5"/><path d="M8 40L220 12M12 10L215 45M20 50L200 8" stroke="#a7f3d0" stroke-width="2"/> <g fill="#065f46" font-family="monospace" font-size="27" font-weight="700" letter-spacing="2">${imageChars}</g></svg>`;
 
-  captchaChallenges.set(id, {
-    answerHash: crypto.createHash('sha256').update(answer).digest('hex'),
-    client: ip,
-    expiresAt: now + CAPTCHA_TTL_MS,
-  });
   const image = await sharp(Buffer.from(svg)).png().toBuffer();
+  const answerHash = crypto.createHash('sha256').update(answer).digest('hex');
+  const clientHash = crypto.createHash('sha256').update(ip).digest('hex');
+  await pool.query(
+    `DELETE FROM auth_captcha_challenges
+     WHERE expires_at <= UTC_TIMESTAMP(3)
+     LIMIT 1000`
+  );
+  await pool.query(
+    `INSERT INTO auth_captcha_challenges
+       (challenge_id, answer_hash, client_hash, expires_at)
+     VALUES (?, ?, ?, DATE_ADD(UTC_TIMESTAMP(3), INTERVAL 5 MINUTE))`,
+    [id, answerHash, clientHash]
+  );
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   return res.json({
     challengeId: id,
@@ -66,23 +71,51 @@ async function issueCaptcha(req, res) {
   });
 }
 
-function consumeCaptcha(req, challengeId, answer) {
+async function consumeCaptcha(req, challengeId, answer) {
   if (
     typeof challengeId !== 'string' ||
     !/^[a-f0-9]{48}$/.test(challengeId) ||
     typeof answer !== 'string'
   ) return false;
 
-  const challenge = captchaChallenges.get(challengeId);
-  captchaChallenges.delete(challengeId);
+  const connection = await pool.getConnection();
+  let challenge;
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.query(
+      `SELECT answer_hash, client_hash, expires_at > UTC_TIMESTAMP(3) AS is_valid
+       FROM auth_captcha_challenges
+       WHERE challenge_id = ?
+       FOR UPDATE`,
+      [challengeId]
+    );
+    challenge = rows[0];
+    await connection.query(
+      'DELETE FROM auth_captcha_challenges WHERE challenge_id = ?',
+      [challengeId]
+    );
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+
+  const clientHash = crypto.createHash('sha256').update(clientKey(req)).digest();
   if (
     !challenge ||
-    challenge.expiresAt <= Date.now() ||
-    challenge.client !== clientKey(req) ||
+    !challenge.is_valid ||
     !/^[a-z0-9]{6}$/i.test(answer.trim())
   ) return false;
 
-  const expected = Buffer.from(challenge.answerHash, 'hex');
+  const storedClientHash = Buffer.from(challenge.client_hash, 'hex');
+  if (
+    storedClientHash.length !== clientHash.length ||
+    !crypto.timingSafeEqual(storedClientHash, clientHash)
+  ) return false;
+
+  const expected = Buffer.from(challenge.answer_hash, 'hex');
   const provided = crypto.createHash('sha256')
     .update(answer.trim().toUpperCase())
     .digest();
@@ -149,7 +182,7 @@ async function login(req, res) {
       return res.status(400).json({ message: 'Username atau password tidak valid.' });
     }
 
-    if (!consumeCaptcha(req, captchaId, captchaCode)) {
+    if (!await consumeCaptcha(req, captchaId, captchaCode)) {
       recordLoginFailure(req);
       return res.status(400).json({ message: 'Kode acak salah atau kedaluwarsa. Muat kode baru.' });
     }

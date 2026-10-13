@@ -71,6 +71,7 @@ simlog/
    - `backend/database/migration_homepage_cms.sql` (tabel konten beranda, berita, BPH, dan pengaturan zoom/crop foto)
    - `backend/database/migration_piket_qr.sql` (keamanan foto, anti-duplikasi, dan dukungan form QR)
    - `backend/database/migration_security_hardening.sql` (verifikasi laporan piket)
+   - `backend/database/migration_auth_captcha_challenges.sql` (penyimpanan CAPTCHA login bersama untuk deployment serverless)
    - `backend/database/seed.sql` (data awal 8 bidang, ruangan, kategori, admin)
 3. Untuk menolak unggahan yang sama dengan foto piket lama yang file-nya masih tersedia, jalankan dari folder `backend`:
 
@@ -174,9 +175,12 @@ melalui QR disimpan di direktori privat dan dibuka melalui endpoint yang
 memerlukan login admin.
 
 Login meminta username, password, dan kode acak sekali pakai yang kedaluwarsa
-dalam lima menit. Percobaan gagal dibatasi per alamat IP; pembatas ini berada
-di memori proses aplikasi dan perlu diganti dengan penyimpanan bersama jika
-backend dijalankan di beberapa instance.
+dalam lima menit. Tantangan CAPTCHA disimpan pada tabel database agar dapat
+divalidasi lintas instance serverless. Jalankan `migration_auth_captcha_challenges.sql`
+pada database production sebelum deploy backend yang menggunakan perubahan ini.
+Pembatas permintaan CAPTCHA dan percobaan login masih berada di memori proses;
+untuk pembatasan global konsisten di beberapa instance, pindahkan rate limit ke
+penyimpanan bersama.
 
 Semua endpoint upload menerima JPEG/PNG maksimal 5 MB. Server mencocokkan
 ekstensi dan MIME dengan format gambar hasil decode, lalu memproses ulang gambar
