@@ -54,7 +54,19 @@ app.use(
 
 app.use(
   '/uploads',
-  express.static(uploadDir)
+  (req, res, next) => {
+    if (!['.jpg', '.jpeg', '.png', '.webp'].includes(path.extname(req.path).toLowerCase())) {
+      return res.status(404).json({ message: 'File tidak ditemukan.' });
+    }
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    return next();
+  },
+  express.static(uploadDir, {
+    dotfiles: 'deny',
+    index: false,
+  })
 );
 
 // ========================================

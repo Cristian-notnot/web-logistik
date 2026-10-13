@@ -168,6 +168,37 @@ exports.listPiket = handler(
   }
 );
 
+exports.verifyPiket = handler(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) {
+    const error = new Error('Laporan piket tidak ditemukan.');
+    error.status = 404;
+    throw error;
+  }
+
+  const [result] = await pool.query(
+    `UPDATE piket_pelaksanaan
+     SET status_verifikasi = 1, diverifikasi_oleh = ?, diverifikasi_pada = NOW()
+     WHERE id = ? AND status_verifikasi = 0`,
+    [req.user.id, id]
+  );
+
+  if (!result.affectedRows) {
+    const [[record]] = await pool.query(
+      'SELECT id, status_verifikasi FROM piket_pelaksanaan WHERE id = ? LIMIT 1',
+      [id]
+    );
+    if (!record) {
+      const error = new Error('Laporan piket tidak ditemukan.');
+      error.status = 404;
+      throw error;
+    }
+    return res.json({ message: 'Laporan piket ini sudah diverifikasi.' });
+  }
+
+  return res.json({ message: 'Laporan piket berhasil diverifikasi.' });
+});
+
 exports.createJadwalPiket = handler(
   async (req, res) => {
     const {

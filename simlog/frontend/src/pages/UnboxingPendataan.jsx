@@ -154,7 +154,7 @@ export default function UnboxingPendataan() {
               <div className="relative flex items-center justify-center rounded-xl border-2 border-dashed border-slate-300 p-4 transition hover:border-brand">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                   onChange={(e) => setFotoFile(e.target.files[0])}
                   className="absolute inset-0 cursor-pointer opacity-0"
                 />

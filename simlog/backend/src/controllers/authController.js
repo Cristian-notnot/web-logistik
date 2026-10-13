@@ -1,18 +1,157 @@
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { pool } = require('../config/db');
 const { signToken } = require('../utils/jwt');
+const sharp = require('sharp');
+
+const CAPTCHA_TTL_MS = 5 * 60 * 1000;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MAX_LOGIN_FAILURES = 5;
+const captchaChallenges = new Map();
+const loginAttempts = new Map();
+const captchaRequests = new Map();
+
+function clientKey(req) {
+  return req.ip || req.socket.remoteAddress || 'unknown';
+}
+
+function pruneExpiredEntries(map, now) {
+  if (map.size < 5000) return;
+  for (const [key, value] of map) {
+    if (value.expiresAt <= now) map.delete(key);
+  }
+  while (map.size >= 10000) {
+    map.delete(map.keys().next().value);
+  }
+}
+
+async function issueCaptcha(req, res) {
+  const now = Date.now();
+  pruneExpiredEntries(captchaChallenges, now);
+  pruneExpiredEntries(captchaRequests, now);
+  const ip = clientKey(req);
+  const request = captchaRequests.get(ip);
+  if (request && request.expiresAt > now && request.count >= 30) {
+    return res.status(429).json({ message: 'Terlalu banyak permintaan kode. Coba lagi beberapa menit.' });
+  }
+  captchaRequests.set(ip, {
+    count: request && request.expiresAt > now ? request.count + 1 : 1,
+    expiresAt: request && request.expiresAt > now ? request.expiresAt : now + LOGIN_WINDOW_MS,
+  });
+
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const answer = Array.from(
+    crypto.randomBytes(6),
+    (value) => alphabet[value % alphabet.length]
+  ).join('');
+  const id = crypto.randomBytes(24).toString('hex');
+  const imageChars = [...answer].map((character, index) => {
+    const x = 22 + index * 34;
+    const y = 34 + crypto.randomInt(-5, 6);
+    const rotation = crypto.randomInt(-18, 19);
+    return `<text x="${x}" y="${y}" transform="rotate(${rotation} ${x} ${y})">${character}</text>`;
+  }).join('');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="230" height="56" viewBox="0 0 230 56"><rect width="230" height="56" rx="10" fill="#ecfdf5"/><path d="M8 40L220 12M12 10L215 45M20 50L200 8" stroke="#a7f3d0" stroke-width="2"/> <g fill="#065f46" font-family="monospace" font-size="27" font-weight="700" letter-spacing="2">${imageChars}</g></svg>`;
+
+  captchaChallenges.set(id, {
+    answerHash: crypto.createHash('sha256').update(answer).digest('hex'),
+    client: ip,
+    expiresAt: now + CAPTCHA_TTL_MS,
+  });
+  const image = await sharp(Buffer.from(svg)).png().toBuffer();
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  return res.json({
+    challengeId: id,
+    image: `data:image/png;base64,${image.toString('base64')}`,
+  });
+}
+
+function consumeCaptcha(req, challengeId, answer) {
+  if (
+    typeof challengeId !== 'string' ||
+    !/^[a-f0-9]{48}$/.test(challengeId) ||
+    typeof answer !== 'string'
+  ) return false;
+
+  const challenge = captchaChallenges.get(challengeId);
+  captchaChallenges.delete(challengeId);
+  if (
+    !challenge ||
+    challenge.expiresAt <= Date.now() ||
+    challenge.client !== clientKey(req) ||
+    !/^[a-z0-9]{6}$/i.test(answer.trim())
+  ) return false;
+
+  const expected = Buffer.from(challenge.answerHash, 'hex');
+  const provided = crypto.createHash('sha256')
+    .update(answer.trim().toUpperCase())
+    .digest();
+  return crypto.timingSafeEqual(expected, provided);
+}
+
+function getLoginAttempt(req) {
+  const now = Date.now();
+  pruneExpiredEntries(loginAttempts, now);
+  const key = clientKey(req);
+  const attempt = loginAttempts.get(key);
+  if (!attempt || attempt.expiresAt <= now) {
+    return { key, count: 0, expiresAt: now + LOGIN_WINDOW_MS };
+  }
+  return { key, ...attempt };
+}
+
+function recordLoginFailure(req) {
+  const attempt = getLoginAttempt(req);
+  loginAttempts.set(attempt.key, {
+    count: attempt.count + 1,
+    expiresAt: attempt.expiresAt,
+  });
+}
 
 function userResponse(user) {
   return { id: user.id, nama: user.nama, username: user.username, email: user.email, foto_url: user.foto_url, deskripsi: user.deskripsi, role: user.role, bidang_id: user.bidang_id, nama_bidang: user.nama_bidang };
 }
 
+async function getCaptcha(req, res, next) {
+  try {
+    return await issueCaptcha(req, res);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 // POST /api/auth/login
 async function login(req, res) {
   try {
-    const { username, password } = req.body;
+    const {
+      username,
+      password,
+      captchaId,
+      captchaCode,
+    } = req.body || {};
+    const attempt = getLoginAttempt(req);
 
-    if (!username || !password) {
-      return res.status(400).json({ message: 'Username dan password wajib diisi.' });
+    if (attempt.count >= MAX_LOGIN_FAILURES) {
+      return res.status(429).json({
+        message: 'Terlalu banyak percobaan login. Coba lagi setelah 15 menit.',
+      });
+    }
+
+    if (
+      typeof username !== 'string' ||
+      !username.trim() ||
+      username.trim().length > 50 ||
+      typeof password !== 'string' ||
+      !password ||
+      Buffer.byteLength(password, 'utf8') > 72
+    ) {
+      recordLoginFailure(req);
+      return res.status(400).json({ message: 'Username atau password tidak valid.' });
+    }
+
+    if (!consumeCaptcha(req, captchaId, captchaCode)) {
+      recordLoginFailure(req);
+      return res.status(400).json({ message: 'Kode acak salah atau kedaluwarsa. Muat kode baru.' });
     }
 
     const [rows] = await pool.query(
@@ -20,10 +159,11 @@ async function login(req, res) {
        FROM users u
        LEFT JOIN bidang b ON b.id = u.bidang_id
        WHERE u.username = ? AND u.aktif = 1`,
-      [username]
+      [username.trim()]
     );
 
     if (rows.length === 0) {
+      recordLoginFailure(req);
       return res.status(401).json({ message: 'Username atau password salah.' });
     }
 
@@ -31,9 +171,11 @@ async function login(req, res) {
     const passwordCocok = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordCocok) {
+      recordLoginFailure(req);
       return res.status(401).json({ message: 'Username atau password salah.' });
     }
 
+    loginAttempts.delete(clientKey(req));
     await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
 
     const token = signToken({
@@ -84,4 +226,4 @@ async function updateProfile(req, res) {
   }
 }
 
-module.exports = { login, me, updateProfile };
+module.exports = { getCaptcha, login, me, updateProfile };

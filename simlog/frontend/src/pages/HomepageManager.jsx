@@ -365,7 +365,7 @@ function ItemEditor({ kind, record, fallbackImage, onSave, onDelete, onCancel })
             className="sr-only"
             type="file"
             name="image"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,.jpg,.jpeg,.png"
             required={isNews && !record && !imageFile}
             onChange={(event) => {
               const selectedFile = event.target.files?.[0] || null;

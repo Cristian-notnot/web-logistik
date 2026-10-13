@@ -1,39 +1,15 @@
-const crypto = require('crypto');
-const fs = require('fs');
-const multer = require('multer');
 const path = require('path');
 const express = require('express');
 const controller = require('../controllers/homepageController');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/role');
+const { secureImageUpload } = require('../middleware/secureImageUpload');
 
 const router = express.Router();
 const adminRouter = express.Router();
 const uploadRoot = path.resolve(__dirname, '..', '..', process.env.UPLOAD_DIR || 'uploads');
 const homepageUploadDir = path.join(uploadRoot, 'homepage');
-fs.mkdirSync(homepageUploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, callback) => callback(null, homepageUploadDir),
-  filename: (req, file, callback) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-    callback(null, `${Date.now()}-${crypto.randomUUID()}${extension}`);
-  },
-});
-
-const imageUpload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, callback) => {
-    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-    const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-    const extension = path.extname(file.originalname).toLowerCase();
-    if (!allowedTypes.has(file.mimetype) || !allowedExtensions.has(extension)) {
-      return callback(new Error('File harus berupa gambar JPG, PNG, atau WebP.'));
-    }
-    callback(null, true);
-  },
-});
+const imageUpload = secureImageUpload(homepageUploadDir);
 
 const withKind = (kind) => (req, res, next) => {
   req.homepageKind = kind;

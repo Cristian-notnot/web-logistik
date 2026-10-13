@@ -6,11 +6,16 @@ import {
   Boxes,
   Building2,
   Compass,
+  Facebook,
+  Instagram,
   Loader2,
+  Mail,
   Menu,
   PackageCheck,
   Radio,
+  RefreshCw,
   ShieldCheck,
+  Youtube,
   X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -45,6 +50,10 @@ export default function Login() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [captcha, setCaptcha] = useState(null);
+  const [captchaCode, setCaptchaCode] = useState('');
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+  const [captchaError, setCaptchaError] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -52,6 +61,25 @@ export default function Login() {
   const [selectedNews, setSelectedNews] = useState(null);
   const newsTrackRef = useRef(null);
   const newsDragRef = useRef(null);
+
+  async function loadCaptcha() {
+    setCaptchaLoading(true);
+    setCaptchaCode('');
+    setCaptchaError('');
+    try {
+      const { data } = await api.get('/auth/captcha');
+      setCaptcha(data);
+    } catch {
+      setCaptcha(null);
+      setCaptchaError('Kode keamanan belum dapat dimuat. Coba muat ulang.');
+    } finally {
+      setCaptchaLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (showLogin) loadCaptcha();
+  }, [showLogin]);
 
   function scrollNews(direction) {
     newsTrackRef.current?.scrollBy({
@@ -235,10 +263,12 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    const ok = await login(username, password);
+    const ok = await login(username, password, captcha?.challengeId, captchaCode);
 
     if (ok) {
       navigate('/dashboard');
+    } else {
+      await loadCaptcha();
     }
   }
 
@@ -926,7 +956,7 @@ export default function Login() {
         id="kontak"
         className="bg-[#082f29] text-white"
       >
-        <div className="mx-auto grid max-w-[1280px] gap-12 px-6 py-14 sm:px-8 md:grid-cols-[1.4fr_0.8fr_0.8fr] lg:px-10">
+        <div className="mx-auto grid max-w-[1280px] gap-10 px-6 py-14 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.25fr_1.1fr_0.7fr_0.8fr] lg:gap-12 lg:px-10">
           <div>
             <div className="flex items-center gap-3">
               <img
@@ -947,9 +977,66 @@ export default function Login() {
             </div>
 
             <p className="mt-6 max-w-sm text-sm leading-7 text-emerald-100/55">
-              Hizbul Wathan Universitas Muhammadiyah Semarang.
-              Pandu Berkemajuan.
+              Official Account Kepanduan Hizbul Wathan Kafilah Jenderal
+              Soedirman Universitas Muhammadiyah Semarang. Pandu Berkemajuan.
             </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold">Ikuti Media Sosial</p>
+            <div className="mt-5 grid grid-cols-2 gap-2.5">
+              <a
+                href="https://www.instagram.com/hw_unimus/"
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex min-h-12 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-emerald-50/75 transition hover:border-pink-300/40 hover:bg-white/[0.09] hover:text-white"
+              >
+                <Instagram size={18} className="text-pink-300 transition group-hover:scale-110" />
+                <span>Instagram</span>
+              </a>
+              <a
+                href="https://www.tiktok.com/@hw_unimus"
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex min-h-12 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-emerald-50/75 transition hover:border-cyan-200/40 hover:bg-white/[0.09] hover:text-white"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="h-[18px] w-[18px] text-cyan-200 transition group-hover:scale-110"
+                >
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.44v13.67a2.9 2.9 0 0 1-2.9 2.9 2.9 2.9 0 0 1-2.9-2.9 2.9 2.9 0 0 1 2.9-2.9c.3 0 .6.05.87.14V9.38a6.4 6.4 0 0 0-.87-.06A6.35 6.35 0 0 0 3.13 15.67 6.35 6.35 0 0 0 9.48 22a6.35 6.35 0 0 0 6.35-6.33V8.7a8.2 8.2 0 0 0 4.8 1.55V6.83a4.83 4.83 0 0 1-1.04-.14Z" />
+                </svg>
+                <span>TikTok</span>
+              </a>
+              <a
+                href="https://www.youtube.com/results?search_query=Hizbul+Wathan+Unimus"
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex min-h-12 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-emerald-50/75 transition hover:border-red-300/40 hover:bg-white/[0.09] hover:text-white"
+              >
+                <Youtube size={19} className="text-red-300 transition group-hover:scale-110" />
+                <span>YouTube</span>
+              </a>
+              <a
+                href="https://www.facebook.com/search/pages/?q=Hizbul%20Wathan%20Unimus"
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex min-h-12 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-emerald-50/75 transition hover:border-blue-300/40 hover:bg-white/[0.09] hover:text-white"
+              >
+                <Facebook size={18} className="text-blue-300 transition group-hover:scale-110" />
+                <span>Facebook</span>
+              </a>
+            </div>
+            <a
+              href="mailto:ukmhizbulwathan@unimus.ac.id"
+              className="mt-3 inline-flex items-center gap-2.5 rounded-xl px-1 py-2 text-sm text-emerald-100/65 transition hover:text-white"
+            >
+              <Mail size={17} className="text-emerald-300" />
+              ukmhizbulwathan@unimus.ac.id
+            </a>
+            <p className="mt-1 text-xs text-emerald-100/40">Official account · @hw_unimus</p>
           </div>
 
           <div>
@@ -1111,9 +1198,51 @@ export default function Login() {
                 />
               </div>
 
+              <div className="mt-4">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Kode acak
+                </label>
+                <div className="flex items-center gap-2">
+                  {captcha?.image ? (
+                    <img
+                      src={captcha.image}
+                      alt="Kode verifikasi acak"
+                      className="h-14 min-w-0 flex-1 rounded-xl border border-emerald-100 bg-emerald-50 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-14 min-w-0 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500">
+                      {captchaLoading ? 'Memuat kode...' : 'Kode belum tersedia'}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={loadCaptcha}
+                    disabled={captchaLoading}
+                    aria-label="Muat kode acak baru"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    <RefreshCw size={17} className={captchaLoading ? 'animate-spin' : ''} />
+                  </button>
+                </div>
+                <input
+                  value={captchaCode}
+                  onChange={(e) => setCaptchaCode(e.target.value.toUpperCase())}
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-3 text-sm uppercase tracking-[0.25em] text-slate-800 transition focus:border-emerald-600 focus:bg-white focus:outline-none"
+                  placeholder="Ketik kode di atas"
+                  autoComplete="off"
+                  maxLength={6}
+                  required
+                />
+                {captchaError && (
+                  <p role="alert" className="mt-2 text-xs text-red-600">
+                    {captchaError}
+                  </p>
+                )}
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || captchaLoading || !captcha}
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#08785d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#06644e] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading && (

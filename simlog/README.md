@@ -31,6 +31,7 @@ mengikuti pola yang sama seperti modul Inventaris).
 - **Frontend:** React + Vite + Tailwind CSS, react-router-dom, axios, lucide-react
 - **Backend:** Node.js + Express, mysql2, JWT (jsonwebtoken), bcrypt, multer (upload foto)
 - **Database:** MySQL (dev: Laragon)
+- **Node.js:** 20.9 atau lebih baru (diperlukan oleh Sharp untuk validasi dan sanitasi gambar)
 
 ## Struktur folder
 
@@ -69,6 +70,7 @@ simlog/
    - `backend/database/schema.sql` (membuat database & seluruh tabel)
    - `backend/database/migration_homepage_cms.sql` (tabel konten beranda, berita, BPH, dan pengaturan zoom/crop foto)
    - `backend/database/migration_piket_qr.sql` (keamanan foto, anti-duplikasi, dan dukungan form QR)
+   - `backend/database/migration_security_hardening.sql` (verifikasi laporan piket)
    - `backend/database/seed.sql` (data awal 8 bidang, ruangan, kategori, admin)
 3. Untuk menolak unggahan yang sama dengan foto piket lama yang file-nya masih tersedia, jalankan dari folder `backend`:
 
@@ -135,10 +137,23 @@ anggota melihat jadwal per bidang terlebih dahulu; tombol pengisian hanya
 tersedia untuk bidang yang sedang bertugas. Setelah dipilih, anggota mengisi
 nama, foto kamera, dan catatan opsional.
 Riwayat serta foto hanya dapat dilihat lewat halaman piket admin yang meminta
-login. Waktu pencatatan berasal dari server, hash SHA-256 menolak file yang
-identik, dan nama yang sama hanya dapat mengirim satu laporan untuk bidangnya
-per hari. Foto yang dikirim melalui QR disimpan di direktori privat dan dibuka
-melalui endpoint yang memerlukan login admin.
+login. Laporan QR baru berstatus menunggu verifikasi admin dan baru ditandai
+terverifikasi setelah admin memeriksa nama serta dokumentasinya. Waktu pencatatan
+berasal dari server, hash SHA-256 menolak file yang identik, dan nama yang sama
+hanya dapat mengirim satu laporan untuk bidangnya per hari. Foto yang dikirim
+melalui QR disimpan di direktori privat dan dibuka melalui endpoint yang
+memerlukan login admin.
+
+Login meminta username, password, dan kode acak sekali pakai yang kedaluwarsa
+dalam lima menit. Percobaan gagal dibatasi per alamat IP; pembatas ini berada
+di memori proses aplikasi dan perlu diganti dengan penyimpanan bersama jika
+backend dijalankan di beberapa instance.
+
+Semua endpoint upload menerima JPEG/PNG maksimal 5 MB. Server mencocokkan
+ekstensi dan MIME dengan format gambar hasil decode, lalu memproses ulang gambar
+sebelum menyimpannya dengan nama acak; nama file dan metadata dari upload tidak
+dipakai sebagai keluaran. Batasan ini berlaku di server, bukan hanya pada
+pemilih file browser.
 
 Akses kamera ponsel memerlukan HTTPS. Form memakai petunjuk capture kamera
 native dengan pilihan kamera depan/belakang; perilakunya bergantung pada browser

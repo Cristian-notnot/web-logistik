@@ -139,10 +139,14 @@ CREATE TABLE piket_pelaksanaan (
   catatan                TEXT NULL,
   foto_url               VARCHAR(255) NOT NULL,
   sumber_input           ENUM('Google Form','Manual') NOT NULL DEFAULT 'Manual',
+  status_verifikasi      TINYINT(1) NOT NULL DEFAULT 1,
+  diverifikasi_oleh      INT NULL,
+  diverifikasi_pada      DATETIME NULL,
   google_form_response_id VARCHAR(150) NULL UNIQUE,
   created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_pelaksanaan_jadwal FOREIGN KEY (jadwal_id) REFERENCES piket_jadwal(id) ON DELETE CASCADE,
-  CONSTRAINT fk_pelaksanaan_bidang FOREIGN KEY (bidang_id) REFERENCES bidang(id) ON DELETE CASCADE
+  CONSTRAINT fk_pelaksanaan_bidang FOREIGN KEY (bidang_id) REFERENCES bidang(id) ON DELETE CASCADE,
+  CONSTRAINT fk_piket_verifikasi_user FOREIGN KEY (diverifikasi_oleh) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE barang_sewa (
@@ -275,4 +279,3 @@ CREATE TABLE pengadaan (
   status        ENUM('Diajukan','Disetujui','Ditolak','Selesai') NOT NULL DEFAULT 'Diajukan',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
-

@@ -1,5 +1,4 @@
 const express = require('express');
-const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
 
@@ -7,6 +6,7 @@ const c = require(
   '../controllers/operasionalController'
 );
 const publicPiketController = require('../controllers/publicPiketController');
+const { secureImageUpload } = require('../middleware/secureImageUpload');
 
 const {
   requireAuth,
@@ -33,95 +33,11 @@ const uploadDir =
       'uploads'
   );
 
-if (
-  !fs.existsSync(uploadDir)
-) {
-  fs.mkdirSync(
-    uploadDir,
-    {
-      recursive: true,
-    }
-  );
-}
-
-const storage =
-  multer.diskStorage({
-    destination: (
-      req,
-      file,
-      cb
-    ) => {
-      cb(
-        null,
-        uploadDir
-      );
-    },
-
-    filename: (
-      req,
-      file,
-      cb
-    ) => {
-      const name =
-        `${Date.now()}-${Math.round(
-          Math.random() *
-            1e9
-        )}`;
-
-      const ext =
-        path
-          .extname(
-            file.originalname
-          )
-          .toLowerCase();
-
-      cb(
-        null,
-        `${name}${ext}`
-      );
-    },
-  });
-
 const upload = multer({
-  storage,
-
-  limits: {
-    fileSize:
-      5 * 1024 * 1024,
-  },
-
-  fileFilter: (
-    req,
-    file,
-    cb
-  ) => {
-    const allowed = [
-      '.jpg',
-      '.jpeg',
-      '.png',
-      '.webp',
-    ];
-
-    const ext =
-      path
-        .extname(
-          file.originalname
-        )
-        .toLowerCase();
-
-    if (
-      !allowed.includes(ext)
-    ) {
-      return cb(
-        new Error(
-          'Format file harus JPG, JPEG, PNG, atau WEBP.'
-        )
-      );
-    }
-
-    cb(null, true);
-  },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
 });
+const imageUpload = secureImageUpload(uploadDir);
 
 router.get(
   '/unboxing',
@@ -131,7 +47,7 @@ router.get(
 router.post(
   '/unboxing',
   admin,
-  upload.single('foto'),
+  imageUpload.single('foto'),
   c.createUnboxing
 );
 
@@ -147,6 +63,12 @@ router.get(
   publicPiketController.getPiketPhoto
 );
 
+router.put(
+  '/piket/pelaksanaan/:id/verifikasi',
+  admin,
+  c.verifyPiket
+);
+
 router.post(
   '/piket/jadwal',
   admin,
@@ -157,7 +79,7 @@ router.post(
 router.post(
   '/piket/pelaksanaan',
   admin,
-  upload.single('foto'),
+  imageUpload.single('foto'),
   c.createPelaksanaanPiket
 );
 
@@ -177,7 +99,7 @@ router.post(
 router.post(
   '/sewa/peminjaman',
   admin,
-  upload.single('foto_identitas'),
+  imageUpload.single('foto_identitas'),
   c.createPeminjaman
 );
 
@@ -201,7 +123,7 @@ router.get(
 router.post(
   '/revitalisasi/laporan',
   admin,
-  upload.single('foto'),
+  imageUpload.single('foto'),
   c.createLaporanKerusakan
 );
 

@@ -239,7 +239,7 @@ export default function PiketMako() {
                   </div>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                     onChange={(e) => setFotoFile(e.target.files[0])}
                     className="absolute inset-0 cursor-pointer opacity-0"
                     disabled={!jadwalAktif}

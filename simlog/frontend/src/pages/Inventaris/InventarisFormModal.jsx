@@ -213,7 +213,7 @@ export default function InventarisFormModal({
 )}
             <input
   type="file"
-  accept="image/*"
+  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
   onChange={(e)=>{
 
     const file = e.target.files[0];

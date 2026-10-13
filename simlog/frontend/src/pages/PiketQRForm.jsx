@@ -244,7 +244,7 @@ export default function PiketQRForm() {
                 <input
                   ref={cameraInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                   capture={cameraFacing}
                   onChange={handleCameraCapture}
                   className="hidden"

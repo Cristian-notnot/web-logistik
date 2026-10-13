@@ -20,11 +20,16 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  async function login(username, password) {
+  async function login(username, password, captchaId, captchaCode) {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post('/auth/login', { username, password });
+      const { data } = await api.post('/auth/login', {
+        username,
+        password,
+        captchaId,
+        captchaCode,
+      });
       localStorage.setItem('simlog_token', data.token);
       localStorage.setItem('simlog_user', JSON.stringify(data.user));
       setUser(data.user);

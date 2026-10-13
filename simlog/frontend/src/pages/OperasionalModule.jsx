@@ -46,7 +46,7 @@ const configs = {
       {
         key: 'pelaksanaan',
         title: 'Pelaksanaan Terbaru',
-        columns: ['created_at', 'nama_bidang', 'nama_pengisi', 'status', 'foto_url', 'catatan'],
+        columns: ['created_at', 'nama_bidang', 'nama_pengisi', 'status', 'status_verifikasi', 'foto_url', 'catatan'],
       },
     ],
     forms: [
@@ -309,6 +309,17 @@ export default function OperasionalModule({ type }) {
       setNotice(res.data.message || 'Pengembalian berhasil diproses.');
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memproses pengembalian.');
+    }
+  };
+
+  const handleVerifyPiket = async (id) => {
+    try {
+      setError('');
+      const res = await api.put(`/operasional/piket/pelaksanaan/${id}/verifikasi`);
+      await load();
+      setNotice(res.data.message || 'Laporan piket berhasil diverifikasi.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal memverifikasi laporan piket.');
     }
   };
 
@@ -605,6 +616,7 @@ export default function OperasionalModule({ type }) {
                     id={name}
                     type={typeField}
                     name={name}
+                    accept={typeField === 'file' ? 'image/jpeg,image/png,.jpg,.jpeg,.png' : undefined}
                     value={
                       typeField === 'file'
                         ? undefined
@@ -685,6 +697,10 @@ export default function OperasionalModule({ type }) {
                     Number(row[column])
                       ? <span className="font-semibold text-emerald-700">Valid</span>
                       : <span className="font-semibold text-amber-700">Periksa periode</span>
+                  ) : column === 'status_verifikasi' ? (
+                    Number(row[column])
+                      ? <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">Terverifikasi</span>
+                      : <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">Menunggu verifikasi</span>
                   ) : column.includes('tanggal') ||
                     column.includes('minggu') ? (
                     row[column]
@@ -733,6 +749,19 @@ export default function OperasionalModule({ type }) {
                   )}
                 </td>
               )}
+              {type === 'piket' && section.key === 'pelaksanaan' && isUserAdmin && (
+                <td className="px-4 py-3">
+                  {!Number(row.status_verifikasi) && (
+                    <button
+                      type="button"
+                      onClick={() => handleVerifyPiket(row.id)}
+                      className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-800"
+                    >
+                      Verifikasi
+                    </button>
+                  )}
+                </td>
+              )}
             </tr>
           );
           const piketGroups = type === 'piket' && section.key === 'pelaksanaan'
@@ -756,6 +785,11 @@ export default function OperasionalModule({ type }) {
                   {type === 'piket' && section.key === 'jadwal' && (
                     <p className="mt-1 text-xs text-slate-600">
                       Jadwal yang bentrok ditandai “Periksa periode” dan tidak ditampilkan pada form QR.
+                    </p>
+                  )}
+                  {type === 'piket' && section.key === 'pelaksanaan' && (
+                    <p className="mt-1 text-xs text-slate-600">
+                      Laporan dari QR perlu diperiksa dan diverifikasi admin sebelum dianggap sah.
                     </p>
                   )}
                 </div>
@@ -787,6 +821,9 @@ export default function OperasionalModule({ type }) {
                         {type === 'sewa' &&
                           section.key === 'peminjaman' &&
                           isUserAdmin && <th className="px-4 py-3">Aksi Admin</th>}
+                        {type === 'piket' &&
+                          section.key === 'pelaksanaan' &&
+                          isUserAdmin && <th className="px-4 py-3">Aksi Admin</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -795,7 +832,7 @@ export default function OperasionalModule({ type }) {
                             <React.Fragment key={groupName}>
                               <tr className="bg-emerald-50">
                                 <td
-                                  colSpan={section.columns.length}
+                                  colSpan={section.columns.length + (isUserAdmin ? 1 : 0)}
                                   className="px-4 py-3 font-semibold text-emerald-900"
                                 >
                                   Saya piket dari {groupName}

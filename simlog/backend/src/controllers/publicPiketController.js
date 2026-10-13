@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/db');
+const { sanitizeImageBuffer } = require('../middleware/secureImageUpload');
 
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
@@ -71,13 +72,6 @@ function verifyChallenge(token) {
   return nonce;
 }
 
-function isImageBuffer(buffer, mimetype) {
-  if (mimetype === 'image/jpeg') return buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
-  if (mimetype === 'image/png') return buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-  if (mimetype === 'image/webp') return buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
-  return false;
-}
-
 exports.getFormData = async (req, res, next) => {
   try {
     rateLimit(req, 'piket-form');
@@ -124,7 +118,9 @@ exports.submitPiket = async (req, res, next) => {
     if (!Number.isSafeInteger(jadwalId) || jadwalId < 1) throw httpError(400, 'Pilih bidang piket yang aktif.');
     if (catatan.length > 2000) throw httpError(400, 'Catatan maksimal 2000 karakter.');
     if (!req.file) throw httpError(400, 'Ambil foto kegiatan menggunakan kamera sebelum mengirim.');
-    if (!isImageBuffer(req.file.buffer, req.file.mimetype)) throw httpError(400, 'File foto tidak valid.');
+    const image = await sanitizeImageBuffer(req.file.buffer, req.file);
+    req.file.buffer = image.buffer;
+    req.file.mimetype = image.mimetype;
     const nonce = verifyChallenge(req.body.challenge);
     const photoHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
     const namaKey = nama.normalize('NFKC').toLocaleLowerCase('id-ID');
@@ -153,8 +149,7 @@ exports.submitPiket = async (req, res, next) => {
     );
     if (duplicateImage) throw httpError(409, 'Foto ini sudah pernah dikirim. Ambil foto kegiatan yang baru secara langsung.');
 
-    const extension = req.file.mimetype === 'image/png' ? '.png' : req.file.mimetype === 'image/webp' ? '.webp' : '.jpg';
-    const filename = `${Date.now()}-${crypto.randomUUID()}${extension}`;
+    const filename = `${Date.now()}-${crypto.randomUUID()}${image.extension}`;
     imagePath = path.join(piketUploadDir, filename);
     await fs.promises.writeFile(imagePath, req.file.buffer, { flag: 'wx' });
 
@@ -162,8 +157,9 @@ exports.submitPiket = async (req, res, next) => {
       const [result] = await pool.query(`
         INSERT INTO piket_pelaksanaan
           (jadwal_id, tanggal, status, nama_pengisi, bidang_id, catatan, foto_url, sumber_input,
+           status_verifikasi,
            foto_hash, submission_nonce, submission_day, nama_key)
-        VALUES (?, CURDATE(), 'Selesai', ?, ?, ?, ?, 'QR Website', ?, ?, CURDATE(), ?)
+        VALUES (?, CURDATE(), 'Selesai', ?, ?, ?, ?, 'QR Website', 0, ?, ?, CURDATE(), ?)
       `, [
         schedule.id,
         nama,
@@ -176,7 +172,7 @@ exports.submitPiket = async (req, res, next) => {
       ]);
       res.status(201).json({
         id: result.insertId,
-        message: 'Dokumentasi piket berhasil dikirim.',
+        message: 'Laporan piket berhasil dikirim dan menunggu verifikasi admin.',
       });
     } catch (error) {
       await fs.promises.unlink(imagePath).catch((cleanupError) => {
