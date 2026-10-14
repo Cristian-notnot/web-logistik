@@ -3,18 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
-  Boxes,
-  Building2,
   Compass,
   Facebook,
   Instagram,
   Loader2,
   Mail,
   Menu,
-  PackageCheck,
   Radio,
   RefreshCw,
-  ShieldCheck,
   Youtube,
   X
 } from 'lucide-react';
@@ -323,83 +319,20 @@ export default function Login() {
             </div>
           </button>
 
-          <nav className="hidden items-center gap-8 lg:flex">
-            <button
-              type="button"
-              onClick={() => scrollToSection('beranda')}
-              className="text-[13px] font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              Beranda
-            </button>
-
-            <button
-              type="button"
-              onClick={() => scrollToSection('tentang')}
-              className="text-[13px] font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              Tentang
-            </button>
-
-            <button
-              type="button"
-              onClick={() => scrollToSection('bidang')}
-              className="text-[13px] font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              Bidang
-            </button>
-
-            <button
-              type="button"
-              onClick={() => scrollToSection('kegiatan')}
-              className="text-[13px] font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              Kegiatan
-            </button>
-
-            <button
-              type="button"
-              onClick={() => scrollToSection('berita')}
-              className="text-[13px] font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              Berita
-            </button>
-
-            <button
-              type="button"
-              onClick={() => scrollToSection('logistik')}
-              className="text-[13px] font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              Logistik
-            </button>
-
-            <button
-              type="button"
-              onClick={() => scrollToSection('kontak')}
-              className="text-[13px] font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              Kontak
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowLogin(true)}
-              className="rounded-full bg-[#08785d] px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#06644e]"
-            >
-              Masuk Sistem
-            </button>
-          </nav>
-
           <button
             type="button"
             onClick={() => setMobileMenu(!mobileMenu)}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 lg:hidden"
+            aria-label={mobileMenu ? 'Tutup menu navigasi' : 'Buka menu navigasi'}
+            aria-expanded={mobileMenu}
+            aria-controls="homepage-navigation"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition hover:border-emerald-700 hover:text-emerald-700"
           >
             {mobileMenu ? <X size={19} /> : <Menu size={19} />}
           </button>
         </div>
 
         {mobileMenu && (
-          <div className="border-t border-slate-200 bg-white px-6 py-5 lg:hidden">
+          <div id="homepage-navigation" className="absolute right-5 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2.5rem))] rounded-2xl border border-slate-200 bg-white p-5 shadow-xl sm:right-7 lg:right-10">
             <div className="flex flex-col gap-4">
               <button
                 type="button"
@@ -439,14 +372,6 @@ export default function Login() {
                 className="text-left text-sm font-medium"
               >
                 Berita
-              </button>
-
-              <button
-                type="button"
-                onClick={() => scrollToSection('logistik')}
-                className="text-left text-sm font-medium"
-              >
-                Logistik
               </button>
 
               <button
@@ -836,64 +761,6 @@ export default function Login() {
           </div>
         </section>
 
-        <section
-          id="logistik"
-          className="bg-[#0d594b] py-20 lg:py-24"
-        >
-          <div className="mx-auto grid max-w-[1280px] gap-12 px-6 sm:px-8 lg:grid-cols-[0.82fr_1.18fr] lg:px-10">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-emerald-200">
-                Bidang Logistik
-              </p>
-
-              <h2 className="mt-5 max-w-lg text-3xl font-semibold leading-[1.12] tracking-[-0.025em] text-white sm:text-4xl lg:text-[46px]">
-                Pengelolaan operasional yang lebih tertata
-              </h2>
-
-              <p className="mt-6 max-w-lg text-[15px] leading-8 text-emerald-50/70">
-                Sistem Informasi Logistik membantu pengurus dalam mencatat,
-                memantau, dan mengelola kebutuhan operasional organisasi
-                secara terstruktur.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => setShowLogin(true)}
-                className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-[13px] font-semibold text-[#0d594b] transition hover:bg-emerald-50"
-              >
-                Akses Sistem
-                <ArrowRight size={16} />
-              </button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <LogisticCard
-                icon={<Boxes size={22} />}
-                title="Inventaris"
-                description="Pencatatan barang, jumlah, kondisi, lokasi, dan riwayat aset."
-              />
-
-              <LogisticCard
-                icon={<PackageCheck size={22} />}
-                title="Pendataan"
-                description="Pendataan barang masuk dan pembaruan informasi inventaris."
-              />
-
-              <LogisticCard
-                icon={<Building2 size={22} />}
-                title="Ruang dan Mako"
-                description="Pengelolaan ruang dan kebutuhan kegiatan operasional."
-              />
-
-              <LogisticCard
-                icon={<ShieldCheck size={22} />}
-                title="Pengadaan"
-                description="Pencatatan kebutuhan barang, harga, sumber dana, dan pengadaan."
-              />
-            </div>
-          </div>
-        </section>
-
         <section className="bg-white py-16 lg:py-20">
           <div className="mx-auto max-w-[1280px] px-6 sm:px-8 lg:px-10">
             <div className="grid gap-8 border-y border-slate-200 py-10 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -984,54 +851,58 @@ export default function Login() {
 
           <div>
             <p className="text-sm font-semibold">Ikuti Media Sosial</p>
-            <div className="mt-5 grid grid-cols-2 gap-2.5">
+            <div className="mt-5 flex items-center gap-4">
               <a
                 href="https://www.instagram.com/hw_unimus/"
                 target="_blank"
                 rel="noreferrer"
-                className="group inline-flex min-h-12 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-emerald-50/75 transition hover:border-pink-300/40 hover:bg-white/[0.09] hover:text-white"
+                aria-label="Instagram HW UNIMUS"
+                title="Instagram"
+                className="inline-flex h-8 w-8 items-center justify-center text-emerald-100/75 transition hover:scale-110 hover:text-pink-300"
               >
-                <Instagram size={18} className="text-pink-300 transition group-hover:scale-110" />
-                <span>Instagram</span>
+                <Instagram size={21} />
               </a>
               <a
                 href="https://www.tiktok.com/@hw_unimus"
                 target="_blank"
                 rel="noreferrer"
-                className="group inline-flex min-h-12 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-emerald-50/75 transition hover:border-cyan-200/40 hover:bg-white/[0.09] hover:text-white"
+                aria-label="TikTok HW UNIMUS"
+                title="TikTok"
+                className="inline-flex h-8 w-8 items-center justify-center text-emerald-100/75 transition hover:scale-110 hover:text-cyan-200"
               >
                 <svg
                   aria-hidden="true"
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="h-[18px] w-[18px] text-cyan-200 transition group-hover:scale-110"
+                  className="h-[21px] w-[21px]"
                 >
                   <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.44v13.67a2.9 2.9 0 0 1-2.9 2.9 2.9 2.9 0 0 1-2.9-2.9 2.9 2.9 0 0 1 2.9-2.9c.3 0 .6.05.87.14V9.38a6.4 6.4 0 0 0-.87-.06A6.35 6.35 0 0 0 3.13 15.67 6.35 6.35 0 0 0 9.48 22a6.35 6.35 0 0 0 6.35-6.33V8.7a8.2 8.2 0 0 0 4.8 1.55V6.83a4.83 4.83 0 0 1-1.04-.14Z" />
                 </svg>
-                <span>TikTok</span>
               </a>
               <a
                 href="https://www.youtube.com/results?search_query=Hizbul+Wathan+Unimus"
                 target="_blank"
                 rel="noreferrer"
-                className="group inline-flex min-h-12 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-emerald-50/75 transition hover:border-red-300/40 hover:bg-white/[0.09] hover:text-white"
+                aria-label="YouTube Hizbul Wathan Unimus"
+                title="YouTube"
+                className="inline-flex h-8 w-8 items-center justify-center text-emerald-100/75 transition hover:scale-110 hover:text-red-300"
               >
-                <Youtube size={19} className="text-red-300 transition group-hover:scale-110" />
-                <span>YouTube</span>
+                <Youtube size={22} />
               </a>
               <a
                 href="https://www.facebook.com/search/pages/?q=Hizbul%20Wathan%20Unimus"
                 target="_blank"
                 rel="noreferrer"
-                className="group inline-flex min-h-12 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-emerald-50/75 transition hover:border-blue-300/40 hover:bg-white/[0.09] hover:text-white"
+                aria-label="Facebook Hizbul Wathan Unimus"
+                title="Facebook"
+                className="inline-flex h-8 w-8 items-center justify-center text-emerald-100/75 transition hover:scale-110 hover:text-blue-300"
               >
-                <Facebook size={18} className="text-blue-300 transition group-hover:scale-110" />
-                <span>Facebook</span>
+                <Facebook size={21} />
               </a>
             </div>
             <a
               href="mailto:ukmhizbulwathan@unimus.ac.id"
-              className="mt-3 inline-flex items-center gap-2.5 rounded-xl px-1 py-2 text-sm text-emerald-100/65 transition hover:text-white"
+              className="mt-4 inline-flex items-center gap-2.5 text-sm text-emerald-100/65 transition hover:text-white"
             >
               <Mail size={17} className="text-emerald-300" />
               ukmhizbulwathan@unimus.ac.id
@@ -1077,13 +948,6 @@ export default function Login() {
                 Berita
               </button>
 
-              <button
-                type="button"
-                onClick={() => scrollToSection('logistik')}
-                className="w-fit transition hover:text-white"
-              >
-                Logistik
-              </button>
             </div>
           </div>
 
@@ -1258,28 +1122,6 @@ export default function Login() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function LogisticCard({
-  icon,
-  title,
-  description
-}) {
-  return (
-    <div className="border-t border-white/20 py-6">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-emerald-200">
-        {icon}
-      </div>
-
-      <h3 className="mt-5 text-lg font-semibold text-white">
-        {title}
-      </h3>
-
-      <p className="mt-2 max-w-sm text-sm leading-7 text-emerald-50/60">
-        {description}
-      </p>
     </div>
   );
 }
