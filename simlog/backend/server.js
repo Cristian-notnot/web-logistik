@@ -8,6 +8,15 @@ const { testConnection } = require('./src/config/db');
 const routes = require('./src/routes');
 
 const app = express();
+const cors = require('cors');
+
+// Izinkan semua HP dan device luar untuk mengakses API ini
+app.use(cors({
+    origin: '*', 
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 
 const PORT = Number(
   process.env.PORT || 5000
