@@ -77,6 +77,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/health/db', async (req, res) => {
+  try {
+    const { pool } = require('./src/config/db');
+    const [rows] = await pool.query('SELECT COUNT(*) AS total FROM users');
+    res.json({ ok: true, jumlah_user: rows[0].total, db_host: process.env.DB_HOST ? 'terisi' : 'KOSONG' });
+  } catch (e) {
+    res.status(500).json({ ok: false, code: e.code, message: e.message });
+  }
+});
 
 app.use('/api', routes);
 
