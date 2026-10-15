@@ -7,7 +7,7 @@ const pool = mysql.createPool({
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'simlog_hw_unimus',
-
+ 
   ssl: process.env.DB_PORT === '4000' ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : null,
   waitForConnections: true,
   connectionLimit: 5,
@@ -27,4 +27,4 @@ async function testConnection() {
   }
 }
 
-module.exports = pool; 
+module.exports = { pool, testConnection }; 
