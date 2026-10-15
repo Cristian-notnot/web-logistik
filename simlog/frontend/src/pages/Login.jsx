@@ -10,7 +10,6 @@ import {
   Mail,
   Menu,
   Radio,
-  RefreshCw,
   Youtube,
   X
 } from 'lucide-react';
@@ -46,10 +45,6 @@ export default function Login() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [captcha, setCaptcha] = useState(null);
-  const [captchaCode, setCaptchaCode] = useState('');
-  const [captchaLoading, setCaptchaLoading] = useState(false);
-  const [captchaError, setCaptchaError] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -57,25 +52,6 @@ export default function Login() {
   const [selectedNews, setSelectedNews] = useState(null);
   const newsTrackRef = useRef(null);
   const newsDragRef = useRef(null);
-
-  async function loadCaptcha() {
-    setCaptchaLoading(true);
-    setCaptchaCode('');
-    setCaptchaError('');
-    try {
-      const { data } = await api.get('/auth/captcha');
-      setCaptcha(data);
-    } catch {
-      setCaptcha(null);
-      setCaptchaError('Kode keamanan belum dapat dimuat. Coba muat ulang.');
-    } finally {
-      setCaptchaLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (showLogin) loadCaptcha();
-  }, [showLogin]);
 
   function scrollNews(direction) {
     newsTrackRef.current?.scrollBy({
@@ -259,12 +235,10 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    const ok = await login(username, password, captcha?.challengeId, captchaCode);
+    const ok = await login(username, password);
 
     if (ok) {
       navigate('/dashboard');
-    } else {
-      await loadCaptcha();
     }
   }
 
@@ -333,11 +307,11 @@ export default function Login() {
 
         {mobileMenu && (
           <div id="homepage-navigation" className="absolute right-5 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2.5rem))] rounded-2xl border border-slate-200 bg-white p-5 shadow-xl sm:right-7 lg:right-10">
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col divide-y divide-slate-100">
               <button
                 type="button"
                 onClick={() => scrollToSection('beranda')}
-                className="text-left text-sm font-medium"
+                className="py-3 text-left text-sm font-medium transition hover:text-emerald-800"
               >
                 Beranda
               </button>
@@ -345,7 +319,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => scrollToSection('tentang')}
-                className="text-left text-sm font-medium"
+                className="py-3 text-left text-sm font-medium transition hover:text-emerald-800"
               >
                 Tentang
               </button>
@@ -353,7 +327,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => scrollToSection('bidang')}
-                className="text-left text-sm font-medium"
+                className="py-3 text-left text-sm font-medium transition hover:text-emerald-800"
               >
                 Bidang
               </button>
@@ -361,7 +335,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => scrollToSection('kegiatan')}
-                className="text-left text-sm font-medium"
+                className="py-3 text-left text-sm font-medium transition hover:text-emerald-800"
               >
                 Kegiatan
               </button>
@@ -369,7 +343,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => scrollToSection('berita')}
-                className="text-left text-sm font-medium"
+                className="py-3 text-left text-sm font-medium transition hover:text-emerald-800"
               >
                 Berita
               </button>
@@ -377,9 +351,20 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => scrollToSection('kontak')}
-                className="text-left text-sm font-medium"
+                className="py-3 text-left text-sm font-medium transition hover:text-emerald-800"
               >
                 Kontak
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  navigate('/materi');
+                  setMobileMenu(false);
+                }}
+                className="py-3 text-left text-sm font-semibold text-emerald-800 transition hover:text-emerald-950"
+              >
+                Materi
               </button>
 
               <button
@@ -388,7 +373,7 @@ export default function Login() {
                   setShowLogin(true);
                   setMobileMenu(false);
                 }}
-                className="rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white"
+                className="mt-3 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
               >
                 Masuk Sistem
               </button>
@@ -440,14 +425,6 @@ export default function Login() {
                     >
                       Tentang HW UNIMUS
                       <ArrowRight size={16} />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowLogin(true)}
-                      className="rounded-full border border-white/30 bg-white/10 px-6 py-3 text-[13px] font-semibold text-white backdrop-blur-md transition hover:bg-white/20"
-                    >
-                      Masuk Sistem
                     </button>
                   </div>
                 </div>
@@ -761,35 +738,6 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="bg-white py-16 lg:py-20">
-          <div className="mx-auto max-w-[1280px] px-6 sm:px-8 lg:px-10">
-            <div className="grid gap-8 border-y border-slate-200 py-10 lg:grid-cols-[1fr_auto] lg:items-center">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-emerald-700">
-                  Sistem Informasi HW UNIMUS
-                </p>
-
-                <h2 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight tracking-[-0.025em] text-slate-900">
-                  Akses pengelolaan operasional dalam satu sistem
-                </h2>
-
-                <p className="mt-4 max-w-2xl text-[14px] leading-7 text-slate-600">
-                  Sistem ditujukan untuk pengurus yang memiliki akun dan
-                  kewenangan sesuai tugasnya.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowLogin(true)}
-                className="inline-flex h-fit items-center justify-center gap-2 rounded-full bg-[#08785d] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#06644e]"
-              >
-                Masuk Sistem
-                <ArrowRight size={16} />
-              </button>
-            </div>
-          </div>
-        </section>
       </main>
 
       {selectedNews && (
@@ -823,7 +771,7 @@ export default function Login() {
         id="kontak"
         className="bg-[#082f29] text-white"
       >
-        <div className="mx-auto grid max-w-[1280px] gap-10 px-6 py-14 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.25fr_1.1fr_0.7fr_0.8fr] lg:gap-12 lg:px-10">
+        <div className="mx-auto grid max-w-[1280px] gap-10 px-6 py-14 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.25fr_0.7fr_0.8fr] lg:gap-12 lg:px-10">
           <div>
             <div className="flex items-center gap-3">
               <img
@@ -847,67 +795,6 @@ export default function Login() {
               Official Account Kepanduan Hizbul Wathan Kafilah Jenderal
               Soedirman Universitas Muhammadiyah Semarang. Pandu Berkemajuan.
             </p>
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold">Ikuti Media Sosial</p>
-            <div className="mt-5 flex items-center gap-4">
-              <a
-                href="https://www.instagram.com/hw_unimus/"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Instagram HW UNIMUS"
-                title="Instagram"
-                className="inline-flex h-8 w-8 items-center justify-center text-emerald-100/75 transition hover:scale-110 hover:text-pink-300"
-              >
-                <Instagram size={21} />
-              </a>
-              <a
-                href="https://www.tiktok.com/@hw_unimus"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="TikTok HW UNIMUS"
-                title="TikTok"
-                className="inline-flex h-8 w-8 items-center justify-center text-emerald-100/75 transition hover:scale-110 hover:text-cyan-200"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="h-[21px] w-[21px]"
-                >
-                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.44v13.67a2.9 2.9 0 0 1-2.9 2.9 2.9 2.9 0 0 1-2.9-2.9 2.9 2.9 0 0 1 2.9-2.9c.3 0 .6.05.87.14V9.38a6.4 6.4 0 0 0-.87-.06A6.35 6.35 0 0 0 3.13 15.67 6.35 6.35 0 0 0 9.48 22a6.35 6.35 0 0 0 6.35-6.33V8.7a8.2 8.2 0 0 0 4.8 1.55V6.83a4.83 4.83 0 0 1-1.04-.14Z" />
-                </svg>
-              </a>
-              <a
-                href="https://www.youtube.com/results?search_query=Hizbul+Wathan+Unimus"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="YouTube Hizbul Wathan Unimus"
-                title="YouTube"
-                className="inline-flex h-8 w-8 items-center justify-center text-emerald-100/75 transition hover:scale-110 hover:text-red-300"
-              >
-                <Youtube size={22} />
-              </a>
-              <a
-                href="https://www.facebook.com/search/pages/?q=Hizbul%20Wathan%20Unimus"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Facebook Hizbul Wathan Unimus"
-                title="Facebook"
-                className="inline-flex h-8 w-8 items-center justify-center text-emerald-100/75 transition hover:scale-110 hover:text-blue-300"
-              >
-                <Facebook size={21} />
-              </a>
-            </div>
-            <a
-              href="mailto:ukmhizbulwathan@unimus.ac.id"
-              className="mt-4 inline-flex items-center gap-2.5 text-sm text-emerald-100/65 transition hover:text-white"
-            >
-              <Mail size={17} className="text-emerald-300" />
-              ukmhizbulwathan@unimus.ac.id
-            </a>
-            <p className="mt-1 text-xs text-emerald-100/40">Official account · @hw_unimus</p>
           </div>
 
           <div>
@@ -973,8 +860,72 @@ export default function Login() {
         </div>
 
         <div className="border-t border-white/10">
+          <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-6 py-7 sm:px-8 lg:px-10">
+            <p className="text-sm font-semibold">Ikuti Media Sosial</p>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+              <a
+                href="https://www.instagram.com/hw_unimus/"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Instagram HW UNIMUS"
+                title="Instagram"
+                className="inline-flex h-8 w-8 items-center justify-center text-[#E4405F] transition hover:scale-110 hover:brightness-125"
+              >
+                <Instagram size={21} />
+              </a>
+              <a
+                href="https://www.tiktok.com/@hw_unimus"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="TikTok HW UNIMUS"
+                title="TikTok"
+                className="inline-flex h-8 w-8 items-center justify-center text-[#25F4EE] drop-shadow-[1px_1px_0_#FE2C55] transition hover:scale-110 hover:brightness-125"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="h-[21px] w-[21px]"
+                >
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.44v13.67a2.9 2.9 0 0 1-2.9 2.9 2.9 2.9 0 0 1-2.9-2.9 2.9 2.9 0 0 1 2.9-2.9c.3 0 .6.05.87.14V9.38a6.4 6.4 0 0 0-.87-.06A6.35 6.35 0 0 0 3.13 15.67 6.35 6.35 0 0 0 9.48 22a6.35 6.35 0 0 0 6.35-6.33V8.7a8.2 8.2 0 0 0 4.8 1.55V6.83a4.83 4.83 0 0 1-1.04-.14Z" />
+                </svg>
+              </a>
+              <a
+                href="https://www.youtube.com/results?search_query=Hizbul+Wathan+Unimus"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="YouTube Hizbul Wathan Unimus"
+                title="YouTube"
+                className="inline-flex h-8 w-8 items-center justify-center text-[#FF0000] transition hover:scale-110 hover:brightness-125"
+              >
+                <Youtube size={22} />
+              </a>
+              <a
+                href="https://www.facebook.com/search/pages/?q=Hizbul%20Wathan%20Unimus"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Facebook Hizbul Wathan Unimus"
+                title="Facebook"
+                className="inline-flex h-8 w-8 items-center justify-center text-[#1877F2] transition hover:scale-110 hover:brightness-125"
+              >
+                <Facebook size={21} />
+              </a>
+              <a
+                href="mailto:ukmhizbulwathan@unimus.ac.id"
+                className="inline-flex items-center gap-2.5 text-sm text-emerald-100/65 transition hover:text-white"
+              >
+                <Mail size={17} className="text-emerald-300" />
+                ukmhizbulwathan@unimus.ac.id
+              </a>
+            </div>
+            <p className="text-xs text-emerald-100/40">Official account · @hw_unimus</p>
+          </div>
+        </div>
+
+        <div className="border-t border-white/10">
           <div className="mx-auto flex max-w-[1280px] flex-col gap-2 px-6 py-5 text-xs text-emerald-100/35 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-10">
             <span>HW UNIMUS · Kafilah Jenderal Soedirman</span>
+            <span>© {new Date().getFullYear()} Rakanda Charly Agusta Cristiano</span>
             <span>Sistem Informasi HW UNIMUS</span>
           </div>
         </div>
@@ -1062,51 +1013,9 @@ export default function Login() {
                 />
               </div>
 
-              <div className="mt-4">
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Kode acak
-                </label>
-                <div className="flex items-center gap-2">
-                  {captcha?.image ? (
-                    <img
-                      src={captcha.image}
-                      alt="Kode verifikasi acak"
-                      className="h-14 min-w-0 flex-1 rounded-xl border border-emerald-100 bg-emerald-50 object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-14 min-w-0 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500">
-                      {captchaLoading ? 'Memuat kode...' : 'Kode belum tersedia'}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={loadCaptcha}
-                    disabled={captchaLoading}
-                    aria-label="Muat kode acak baru"
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
-                  >
-                    <RefreshCw size={17} className={captchaLoading ? 'animate-spin' : ''} />
-                  </button>
-                </div>
-                <input
-                  value={captchaCode}
-                  onChange={(e) => setCaptchaCode(e.target.value.toUpperCase())}
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-3 text-sm uppercase tracking-[0.25em] text-slate-800 transition focus:border-emerald-600 focus:bg-white focus:outline-none"
-                  placeholder="Ketik kode di atas"
-                  autoComplete="off"
-                  maxLength={6}
-                  required
-                />
-                {captchaError && (
-                  <p role="alert" className="mt-2 text-xs text-red-600">
-                    {captchaError}
-                  </p>
-                )}
-              </div>
-
               <button
                 type="submit"
-                disabled={loading || captchaLoading || !captcha}
+                disabled={loading}
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#08785d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#06644e] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading && (

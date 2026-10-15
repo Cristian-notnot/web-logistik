@@ -7,6 +7,7 @@ router.use('/master', require('./masterDataRoutes'));
 router.use('/upload', require('./uploadRoutes'));
 router.use('/public/piket', require('./publicPiketRoutes'));
 router.use('/operasional', require('./operasionalRoutes'));
+router.use(require('./materialRoutes'));
 router.use(require('./homepageRoutes'));
 
 // --- Modul fase berikutnya (roadmap) ---

@@ -69,9 +69,9 @@ simlog/
 2. Buka HeidiSQL / phpMyAdmin bawaan Laragon, lalu jalankan:
    - `backend/database/schema.sql` (membuat database & seluruh tabel)
    - `backend/database/migration_homepage_cms.sql` (tabel konten beranda, berita, BPH, dan pengaturan zoom/crop foto)
+   - `backend/database/migration_materi.sql` (tabel materi publik)
    - `backend/database/migration_piket_qr.sql` (keamanan foto, anti-duplikasi, dan dukungan form QR)
    - `backend/database/migration_security_hardening.sql` (verifikasi laporan piket)
-   - `backend/database/migration_auth_captcha_challenges.sql` (penyimpanan CAPTCHA login bersama untuk deployment serverless)
    - `backend/database/seed.sql` (data awal 8 bidang, ruangan, kategori, admin)
 3. Untuk menolak unggahan yang sama dengan foto piket lama yang file-nya masih tersedia, jalankan dari folder `backend`:
 
@@ -106,7 +106,8 @@ Backend jalan di `http://localhost:5000`. Cek `http://localhost:5000/api/health`
 ### Direktori upload
 
 Backend tidak membuat direktori upload secara otomatis. Untuk penggunaan lokal,
-pastikan direktori `backend/uploads`, `backend/uploads/homepage`, dan
+pastikan direktori `backend/uploads`, `backend/uploads/homepage`,
+`backend/uploads/materi`, dan
 `backend/private_uploads/piket` sudah tersedia dan dapat ditulisi sebelum server
 dijalankan. Jika direktori belum ada, endpoint upload akan mengembalikan error
 503 dengan petunjuk, bukan membuat folder sendiri.
@@ -174,13 +175,10 @@ hanya dapat mengirim satu laporan untuk bidangnya per hari. Foto yang dikirim
 melalui QR disimpan di direktori privat dan dibuka melalui endpoint yang
 memerlukan login admin.
 
-Login meminta username, password, dan kode acak sekali pakai yang kedaluwarsa
-dalam lima menit. Tantangan CAPTCHA disimpan pada tabel database agar dapat
-divalidasi lintas instance serverless. Jalankan `migration_auth_captcha_challenges.sql`
-pada database production sebelum deploy backend yang menggunakan perubahan ini.
-Pembatas permintaan CAPTCHA dan percobaan login masih berada di memori proses;
-untuk pembatasan global konsisten di beberapa instance, pindahkan rate limit ke
-penyimpanan bersama.
+Login hanya meminta username dan password. Sebagai pengganti CAPTCHA, backend
+membatasi lima percobaan login gagal dari alamat IP yang sama dalam 15 menit.
+Pembatas percobaan disimpan di memori proses; untuk pembatasan global konsisten
+di beberapa instance serverless, pindahkan rate limit ke penyimpanan bersama.
 
 Semua endpoint upload menerima JPEG/PNG maksimal 5 MB. Server mencocokkan
 ekstensi dan MIME dengan format gambar hasil decode, lalu memproses ulang gambar

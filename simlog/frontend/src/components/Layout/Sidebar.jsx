@@ -10,6 +10,7 @@ import {
   Wrench,
   FileBarChart2,
   PanelsTopLeft,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -25,6 +26,13 @@ const navItems = [
     to: '/kelola-beranda',
     label: 'Kelola Beranda',
     icon: PanelsTopLeft,
+    active: true,
+    adminOnly: true,
+  },
+  {
+    to: '/kelola-materi',
+    label: 'Kelola Materi',
+    icon: BookOpen,
     active: true,
     adminOnly: true,
   },

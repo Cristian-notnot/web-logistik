@@ -279,3 +279,16 @@ CREATE TABLE pengadaan (
   status        ENUM('Diajukan','Disetujui','Ditolak','Selesai') NOT NULL DEFAULT 'Diajukan',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+
+CREATE TABLE materi (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  judul VARCHAR(180) NOT NULL,
+  deskripsi VARCHAR(2000) NOT NULL,
+  nama_file VARCHAR(255) NOT NULL,
+  nama_asli VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(120) NOT NULL,
+  ukuran_file BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_materi_created (created_at, id)
+) ENGINE=InnoDB;

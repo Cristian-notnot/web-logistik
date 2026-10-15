@@ -99,7 +99,7 @@ app.use((err, req, res, next) => {
   ) {
     return res.status(413).json({
       message:
-        'Ukuran file terlalu besar. Maksimal 5 MB.',
+        'Ukuran file terlalu besar. Periksa batas ukuran untuk jenis unggahan ini.',
     });
   }
 
